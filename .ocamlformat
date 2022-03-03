@@ -1,0 +1,5 @@
+profile = ocamlformat
+version = 0.20.1
+
+exp-grouping = preserve
+

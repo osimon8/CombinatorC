@@ -1,0 +1,17 @@
+(env
+ (dev
+  (flags
+   (:standard -w "+a-4-7-9-27-29-30-32..42-44-45-48-50-60-66..70"))))
+
+(executable
+ (public_name main)
+ (name main)
+ (modules main)
+ (libraries unix str utils)
+ (promote (until-clean)))
+
+; (ocamllex lexer)
+
+; (menhir
+;  (modules parser)
+;  (flags --explain))

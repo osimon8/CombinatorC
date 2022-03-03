@@ -1,0 +1,4 @@
+(library
+ (name compiler)
+ (libraries yojson)
+)
