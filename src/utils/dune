@@ -1,3 +1,2 @@
 (library
- (name utils)
- (libraries yojson zlib base64 memcpy))
+ (name utils))

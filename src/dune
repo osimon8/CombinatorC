@@ -6,12 +6,6 @@
 (executable
  (public_name main)
  (name main)
- (modules main)
- (libraries unix str utils)
+ (modules main encode)
+ (libraries unix str yojson zlib base64 memcpy utils parse compiler)
  (promote (until-clean)))
-
-; (ocamllex lexer)
-
-; (menhir
-;  (modules parser)
-;  (flags --explain))
