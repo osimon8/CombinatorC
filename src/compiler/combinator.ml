@@ -1,6 +1,4 @@
-type symbol = 
-  | Red of string
-  | Green of string
+type symbol = string
 
 type id = int
 
@@ -47,6 +45,8 @@ type aop =
  | Anything
  | Everything
 
+type op = Aop of aop | Dop of dop
+
 (* left input * operation * right input * output  *)
 type arithemtic_config = aop * arithemtic_op * aop * aop 
 
@@ -60,11 +60,38 @@ type cfg =
 | D of decider_config 
 | C of constant_config
 
+type arithmetic_combinator = id * arithemtic_config
+type decider_combinator = id * decider_config
+
 type combinator = 
- | Arithmetic of id * arithemtic_config
- | Decider of id * decider_config
+ | Arithmetic of arithmetic_combinator
+ | Decider of decider_combinator
  | Constant of id * constant_config
  | Pole of id
+
+let id_of_combinator comb = 
+  begin match comb with 
+  | Arithmetic (id, _) -> id 
+  | Decider (id, _) -> id
+  | Constant (id, _) -> id
+  | Pole id -> id
+  end
+
+let replace_signal (comb:arithmetic_combinator) (s:symbol) (v:value) : arithmetic_combinator =
+  let r2 (comb:arithmetic_combinator) s v : arithmetic_combinator =
+    let id, ((o1, op, o2, out)) = comb in 
+    begin match o2 with 
+    | Symbol sy -> if sy = s then (id, (o1, op, Const v, out)) else comb
+    | _ -> comb 
+    end
+  in
+
+   let id, ((o1, op, o2, out)) = comb in 
+   begin match o1 with 
+   | Symbol sy -> if sy = s then r2 (id, (Const v, op, o2, out)) s v else r2 comb s v
+   | _ -> r2 comb s v
+end
+
 
 let string_of_arithmetic_op (op:arithemtic_op) : string = 
  begin match op with 

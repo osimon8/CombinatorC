@@ -27,11 +27,6 @@ let identifer = (character | ichar) (character | ichar | digit)*
 let signal = uppercase
 let whitespace = ['\t' ' ' '\r' '\n']
 
-(* Returns a token of type as specified in parser.mly 
-   
-   Each token carries a Range.t value indicating its
-   position in the file.
-*)
 rule token = parse
   | eof         { EOF }
   | whitespace+ { token lexbuf }  (* skip whitespace *)

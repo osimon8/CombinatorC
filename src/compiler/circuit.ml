@@ -13,9 +13,6 @@ type connection =
   | C of id
   | P of id
 
- (* type connection_node =  
-  | CNode of connection * connection_node list *)
-
 module Node = struct                                                                
    type t = connection                                                                     
    let compare = Stdlib.compare                                                 
@@ -37,6 +34,17 @@ let id_of_conn conn =
   | Dout id
   | C id
   | P id -> id
+end
+
+(* id used by Factorio in circuit id in JSON representation *)
+let type_id_of_conn conn = 
+  begin match conn with 
+  | Ain _
+  | Din _
+  | C _
+  | P _ -> 1
+  | Aout _
+  | Dout _ -> 2
 end
 
 let string_of_conn conn = 
@@ -76,7 +84,7 @@ let json_of_config (cfg:cfg) : string * json =
 
   let c_map (i:int) (data:data) =  
     let s, v = data in
-    let s : string = begin match s with Red s | Green s -> s end in
+    (* let s : string = begin match s with Red s | Green s -> s end in *)
     `Assoc [("signal", json_of_symbol s); 
             ("count", `Int v); 
             ("index", `Int (i + 1))] in
@@ -104,7 +112,8 @@ let succs g id =
 
 let json_of_conn color id = 
   fun (clist:connection list) : json ->  
-     `Assoc [(color, `List (List.map (fun c -> `Assoc [("entity_id", `Int (id_of_conn c))])
+     `Assoc [(color, `List (List.map (fun c -> `Assoc [("entity_id", `Int (id_of_conn c));
+                                                        ("circuit_id", `Int (type_id_of_conn c))])
       clist))]
 
 let json_of_combinator (c: combinator) (wire: wire) (g: connection_graph) (cid:id) : json = 
@@ -132,7 +141,7 @@ let json_of_combinator (c: combinator) (wire: wire) (g: connection_graph) (cid:i
 
   `Assoc ([("entity_number", `Int id); 
           ("name", `String name);
-          ("position", `Assoc [("x", `Int (id * 2)); ("y", `Int 0)]);
+          ("position", `Assoc [("x", `Int (id * 1)); ("y", `Int 0)]);
           ] @ cfg_json @ conns)
 
  let json_of_circuit (id: id) (circuit: circuit) : json list = 

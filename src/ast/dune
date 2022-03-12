@@ -1,4 +1,4 @@
 (library
  (name ast)
- (libraries unix str)
+ (libraries unix str core)
 )

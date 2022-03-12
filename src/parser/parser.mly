@@ -24,12 +24,19 @@ bexp:
   | b=b1 { b }  
 
 b1:
-  | l=b5 PLUS r=b1 { Plus(l, r) }
-  | l=b5 MINUS r=b1 { Minus(l, r) }
-  | l=b5 MUL r=b1 { Mul(l, r) }
-  | l=b5 DIV r=b1 { Div(l, r) }
-  | b=b5{ b }
+  | l=b1 PLUS r=b2  { Plus(l, r) }
+  | l=b1 MINUS r=b2 { Minus(l, r) }
+  | b=b2            { b }
 
-b5:
+b2:
+| l=b2 MUL r=b3   { Mul(l, r) }
+| l=b2 DIV r=b3   { Div(l, r) }
+| b=b3            { b }
+
+b3: 
+| MINUS b=b4        { Neg(b) }
+| b=b4            { b }
+
+b4:
   | x=VAR   { Var x }
   | l=LIT   { Lit l }
