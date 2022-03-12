@@ -47,9 +47,11 @@ let compile_bexp_to_circuit (b: bexp) : circuit list =
 
   let wire_input conn = CG.add_edge g (P inp_id) conn in
   let wire_A i = wire_input (Ain i) in
+  let wire_D i = wire_input (Din i) in
+
 
   let rec cb b = 
-    let binop b1 b2 aop = 
+    let a_binop b1 b2 aop = 
       let o_sig = sig_ctr () in
       let id = entity_ctr () in
       (* let wire_input () = CG.add_edge g (P inp_id) (Ain id) in *)
@@ -65,8 +67,24 @@ let compile_bexp_to_circuit (b: bexp) : circuit list =
                                   c1 @ c2 @ [ Arithmetic (id, (Symbol s1, aop, Symbol s2, Symbol o_sig)) ]
                             end, Aout id, o_sig in
 
+    let d_binop b1 b2 dop = 
+      let o_sig = sig_ctr () in
+      let id = entity_ctr () in
+      (* let wire_input () = CG.add_edge g (P inp_id) (Ain id) in *)
+      begin match b1, b2 with 
+                            | Lit l1, Lit l2 -> [ Decider (id, (Const l1, dop, Const l2, Symbol o_sig, One)) ]
+                            | Lit l, Var v -> wire_D id; [ Decider (id, (Const l, dop, Symbol v, Symbol o_sig, One)) ]
+                            | Var v, Lit l -> wire_D id; [ Decider (id, (Symbol v, dop, Const l, Symbol o_sig, One)) ]
+                            | Var v1, Var v2 -> wire_D id; [ Decider (id, (Symbol v1, dop, Symbol v2, Symbol o_sig, One)) ]
+                            | _ -> let c1, o1, s1 = cb b1 in 
+                                   let c2, o2, s2 = cb b2 in 
+                                  CG.add_edge g o1 (Din id);
+                                  CG.add_edge g o2 (Din id);
+                                  c1 @ c2 @ [ Decider (id, (Symbol s1, dop, Symbol s2, Symbol o_sig, One)) ]
+                            end, Dout id, o_sig in
+
     begin match b with 
-    | Var v -> [], P inp_id, v (* we don't need new combinators, the rec loop will wire to the input *)
+    | Var v -> [], P inp_id, v (* we don't need new combinators, set output to the input pole *)
     | Lit l -> let s = sig_ctr () in 
               let id = entity_ctr () in 
               [ Constant (id, [(s, l)]) ], C id, s (* lone lit is a constant *)
@@ -75,17 +93,23 @@ let compile_bexp_to_circuit (b: bexp) : circuit list =
               let o_sig = sig_ctr () in
               CG.add_edge g o (Ain id);
               c @ [ Arithmetic (id, (Symbol s, Mul, Const (-1), Symbol o_sig)) ], Aout id, o_sig
-    | Plus (b1, b2) -> binop b1 b2 Add
-    | Minus (b1, b2) -> binop b1 b2 Sub
-    | Mul (b1, b2) -> binop b1 b2 Mul
-    | Div (b1, b2) -> binop b1 b2 Div
-    | Mod (b1, b2) -> binop b1 b2 Mod
-    | Exp (b1, b2) -> binop b1 b2 Exp
-    | Lshift (b1, b2) -> binop b1 b2 Lshift
-    | Rshift (b1, b2) -> binop b1 b2 Rshift
-    | AND (b1, b2) -> binop b1 b2 AND
-    | OR (b1, b2) -> binop b1 b2 OR
-    | XOR (b1, b2) -> binop b1 b2 XOR
+    | Plus (b1, b2) -> a_binop b1 b2 Add
+    | Minus (b1, b2) -> a_binop b1 b2 Sub
+    | Mul (b1, b2) -> a_binop b1 b2 Mul
+    | Div (b1, b2) -> a_binop b1 b2 Div
+    | Mod (b1, b2) -> a_binop b1 b2 Mod
+    | Exp (b1, b2) -> a_binop b1 b2 Exp
+    | Lshift (b1, b2) -> a_binop b1 b2 Lshift
+    | Rshift (b1, b2) -> a_binop b1 b2 Rshift
+    | AND (b1, b2) -> a_binop b1 b2 AND
+    | OR (b1, b2) -> a_binop b1 b2 OR
+    | XOR (b1, b2) -> a_binop b1 b2 XOR
+    | Gt (b1, b2) -> d_binop b1 b2 Gt
+    | Lt (b1, b2) -> d_binop b1 b2 Lt
+    | Gte (b1, b2) -> d_binop b1 b2 Gte
+    | Lte (b1, b2) -> d_binop b1 b2 Lte
+    | Eq (b1, b2) -> d_binop b1 b2 Eq
+    | Neq (b1, b2) -> d_binop b1 b2 Neq
     end 
   in 
   
@@ -144,7 +168,8 @@ let rec primitive_optimization (vars:string list) (circuit:circuit) : circuit =
   let u_combs = List.filter (fun c -> not (List.mem c temp)) combs in 
 
   let new_combs = List.map (fun (c, (s,v)) -> begin match c with 
-                                          | Arithmetic c -> Arithmetic (replace_signal c s v)
+                                          | Arithmetic c -> Arithmetic (replace_signal_A c s v)
+                                          | Decider c -> Decider (replace_signal_D c s v)
                                           | _ -> failwith "impossible"
                                           end)
                                           sigs in 

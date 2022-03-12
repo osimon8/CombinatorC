@@ -77,7 +77,7 @@ let id_of_combinator comb =
   | Pole id -> id
   end
 
-let replace_signal (comb:arithmetic_combinator) (s:symbol) (v:value) : arithmetic_combinator =
+let replace_signal_A (comb:arithmetic_combinator) (s:symbol) (v:value) : arithmetic_combinator =
   let r2 (comb:arithmetic_combinator) s v : arithmetic_combinator =
     let id, ((o1, op, o2, out)) = comb in 
     begin match o2 with 
@@ -92,6 +92,20 @@ let replace_signal (comb:arithmetic_combinator) (s:symbol) (v:value) : arithmeti
    | _ -> r2 comb s v
 end
 
+let replace_signal_D (comb:decider_combinator) (s:symbol) (v:value) : decider_combinator =
+  let r2 (comb:decider_combinator) s v : decider_combinator =
+    let id, ((o1, op, o2, out, t)) = comb in 
+    begin match o2 with 
+    | Symbol sy -> if sy = s then (id, (o1, op, Const v, out, t)) else comb
+    | _ -> comb 
+    end
+  in
+
+   let id, ((o1, op, o2, out, t)) = comb in 
+   begin match o1 with 
+   | Symbol sy -> if sy = s then r2 (id, (Const v, op, o2, out, t)) s v else r2 comb s v
+   | _ -> r2 comb s v
+end
 
 let string_of_arithmetic_op (op:arithemtic_op) : string = 
  begin match op with 

@@ -43,6 +43,12 @@ rule token = parse
   | '|'         { OR }
   | '^'         { XOR }
   | "**"        { EXP }
+  | '<'         { LT }
+  | '>'         { GT }
+  | ">="        { GTE }
+  | "<="        { LTE }
+  | "=="        { EQ }
+  | "!="        { NEQ }
   | '('         { LPAREN }
   | ')'         { RPAREN }
   | _ as c      { unexpected_char lexbuf c }

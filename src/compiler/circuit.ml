@@ -74,12 +74,18 @@ let json_of_config (cfg:cfg) : string * json =
     end 
   in 
 
-  let parse_do (pre:string) (o:dop) = 
-    begin match o with 
-    | Symbol s -> (pre ^ "_signal", json_of_symbol s)
-    | Const c -> (pre ^ "_constant", `Int c)
-    | _ -> failwith "unsupported"
-    end 
+  let parse_do (pre:string) (o:dop) i = 
+    if i <> 1 then 
+      begin match o with 
+      | Symbol s -> (pre ^ "_signal", json_of_symbol s)
+      | _ -> failwith "unsupported"
+      end
+    else 
+      begin match o with 
+      | Symbol s -> (pre ^ "_signal", json_of_symbol s)
+      | Const c -> ("constant", `Int c)
+      | _ -> failwith "unsupported"
+      end 
   in 
 
   let c_map (i:int) (data:data) =  
@@ -92,18 +98,19 @@ let json_of_config (cfg:cfg) : string * json =
   ("control_behavior", `Assoc (
   begin match cfg with 
   | A (o1, op, o2, out) ->  [("arithmetic_conditions", `Assoc
-                              [(parse_ao "first" o1); (parse_ao "second" o2); 
-                              ("operation", `String (string_of_arithmetic_op op)); 
-                              (parse_ao "output" out)] 
+                                [(parse_ao "first" o1); (parse_ao "second" o2); 
+                                ("operation", `String (string_of_arithmetic_op op)); 
+                                (parse_ao "output" out)] 
                               )]
   | D (o1, op, o2, out, t) -> [("decider_conditions", `Assoc
-                              [(parse_do "first" o1); (parse_do "second" o2); 
-                              ("comparator", `String (string_of_decider_op op)); 
-                              (parse_do "output" out)] 
-                              )] @ (begin match t with 
-                                    | One -> []
-                                    | InpCount -> [("copy_count_from_input", `Bool true)]
-                                    end)
+                                ([(parse_do "first" o1 0); (parse_do "second" o2 1); 
+                                ("comparator", `String (string_of_decider_op op)); 
+                                (parse_do "output" out 2)]  
+                                @ (begin match t with 
+                                    | One -> [("copy_count_from_input", `Bool false)]
+                                    | InpCount -> []
+                                    end))
+                              )] 
   | C cfg -> [("filters", `List (List.mapi c_map cfg))]
   end))
 

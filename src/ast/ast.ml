@@ -13,6 +13,12 @@ type bexp =
   | AND of bexp * bexp
   | OR of bexp * bexp
   | XOR of bexp * bexp
+  | Gt of bexp * bexp
+  | Lt of bexp * bexp
+  | Gte of bexp * bexp
+  | Lte of bexp * bexp
+  | Eq of bexp * bexp
+  | Neq of bexp * bexp
 
 
 let vars_in_bexp (b:bexp) : string list = 
@@ -31,7 +37,13 @@ let vars_in_bexp (b:bexp) : string list =
     | AND (b1, b2) 
     | OR (b1, b2) 
     | XOR (b1, b2) 
-    | Div (b1, b2) -> intern b1 @ intern b2
+    | Div (b1, b2)
+    | Gt (b1, b2)
+    | Lt (b1, b2)
+    | Gte (b1, b2)
+    | Lte (b1, b2)
+    | Eq (b1, b2)
+    | Neq (b1, b2) -> intern b1 @ intern b2
     end in
   (Core.List.stable_dedup (intern b))
 
@@ -79,6 +91,22 @@ let optimize_bexp (b:bexp) : bexp =
 
     | Mul (Neg b1, Neg b2) -> Mul (o b1, o b2)
 
+    (* BEGIN SECTION N - NECESSARY FOR PROPER COMPILATION *)
+    | Gt (Lit l1, Lit l2) -> if l1 > l2 then Lit 1 else Lit 0
+    | Lt (Lit l1, Lit l2) -> if l1 < l2 then Lit 1 else Lit 0
+    | Gte (Lit l1, Lit l2) -> if l1 >= l2 then Lit 1 else Lit 0
+    | Lte (Lit l1, Lit l2) -> if l1 <= l2 then Lit 1 else Lit 0
+    | Eq (Lit l1, Lit l2) -> if l1 == l2 then Lit 1 else Lit 0
+    | Neq (Lit l1, Lit l2) -> if l1 <> l2 then Lit 1 else Lit 0
+    
+    | Gt (Lit l1, b) -> Lte (o b, Lit l1)
+    | Lt (Lit l1, b) -> Gte (o b, Lit l1)
+    | Gte (Lit l1, b) -> Lt (o b, Lit l1)
+    | Lte (Lit l1, b) -> Gt (o b, Lit l1)
+    | Eq (Lit l1, b) -> Eq (o b, Lit l1)
+    | Neq (Lit l1, b) -> Neq (o b, Lit l1)
+    (* END SECTION N*)
+
     | Plus (b1, b2) -> Plus (o b1, o b2)
     | Minus (b1, b2) -> Minus (o b1, o b2)
     | Div (b1, b2) -> Div (o b1, o b2)
@@ -91,6 +119,12 @@ let optimize_bexp (b:bexp) : bexp =
     | OR (b1, b2) -> OR (o b1, o b2)
     | XOR (b1, b2) -> XOR (o b1, o b2)
     | Neg b -> Neg (o b)
+    | Gt (b1, b2) -> Gt (o b1, o b2)
+    | Lt (b1, b2) -> Lt (o b1, o b2)
+    | Gte (b1, b2) -> Gte (o b1, o b2)
+    | Lte (b1, b2) -> Lte (o b1, o b2)
+    | Eq (b1, b2) -> Eq (o b1, o b2)
+    | Neq (b1, b2) -> Neq (o b1, o b2)
     | Lit _
     | Var _ -> b
     end in 
@@ -118,6 +152,12 @@ let string_of_bexp (b : bexp) : string =
         | AND (b1, b2) -> bin b1 b2 "&"
         | OR (b1, b2) -> bin b1 b2 "|"
         | XOR (b1, b2) -> bin b1 b2 "^"
+        | Gt (b1, b2) -> bin b1 b2 ">"
+        | Lt (b1, b2) -> bin b1 b2 "<"
+        | Gte (b1, b2) -> bin b1 b2 ">="
+        | Lte (b1, b2) -> bin b1 b2 "<="
+        | Eq (b1, b2) -> bin b1 b2 "=="
+        | Neq (b1, b2) -> bin b1 b2 "!="
       end
   in
   sob b
