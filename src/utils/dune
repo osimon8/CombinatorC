@@ -1,2 +1,4 @@
 (library
- (name utils))
+ (name utils)
+ (libraries yojson)
+ )

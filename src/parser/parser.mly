@@ -4,6 +4,9 @@ open Ast;;
 
 %token EOF
 %token PLUS
+%token MINUS
+%token MUL
+%token DIV
 %token <string> VAR
 %token <int> LIT
 
@@ -22,6 +25,9 @@ bexp:
 
 b1:
   | l=b5 PLUS r=b1 { Plus(l, r) }
+  | l=b5 MINUS r=b1 { Minus(l, r) }
+  | l=b5 MUL r=b1 { Mul(l, r) }
+  | l=b5 DIV r=b1 { Div(l, r) }
   | b=b5{ b }
 
 b5:

@@ -22,6 +22,7 @@ let uppercase = ['A'-'Z']
 let character = uppercase | lowercase
 let ichar = ['-' '_']
 let digit = ['0'-'9']
+let num = '-'?digit+
 let identifer = (character | ichar) (character | ichar | digit)*
 let signal = uppercase
 let whitespace = ['\t' ' ' '\r' '\n']
@@ -35,6 +36,9 @@ rule token = parse
   | eof         { EOF }
   | whitespace+ { token lexbuf }  (* skip whitespace *)
   | signal { VAR (lexeme lexbuf) }
-  | digit+    { LIT (int_of_string (lexeme lexbuf)) }
+  | num    { LIT (int_of_string (lexeme lexbuf)) }
   | '+'         { PLUS }
+  | '-'         { MINUS }
+  | '*'         { MUL }
+  | '/'         { DIV }
   | _ as c      { unexpected_char lexbuf c }

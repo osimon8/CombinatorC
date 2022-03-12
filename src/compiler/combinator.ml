@@ -67,7 +67,7 @@ type combinator =
  | Pole of id
 
 let string_of_arithmetic_op (op:arithemtic_op) : string = 
-  begin match op with 
+ begin match op with 
  | Add -> "+"
  | Sub -> "-"
  | Mul -> "*"
@@ -76,7 +76,17 @@ let string_of_arithmetic_op (op:arithemtic_op) : string =
  | Exp -> "^"
  | Lshift -> "<<"
  | Rshift -> ">>" 
- | AND -> "&"
- | OR -> "|"
- | XOR -> "xor"
+ | AND -> "AND"
+ | OR -> "OR"
+ | XOR -> "XOR"
+end
+
+let string_of_decider_op (op:decider_op) : string = 
+ begin match op with 
+ | Gt -> ">"
+ | Lt -> "<"
+ | Gte -> "≥"
+ | Lte -> "≤"
+ | Eq -> "="
+ | Neq -> "≠"
 end
