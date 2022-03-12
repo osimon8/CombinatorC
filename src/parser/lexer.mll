@@ -36,4 +36,13 @@ rule token = parse
   | '-'         { MINUS }
   | '*'         { MUL }
   | '/'         { DIV }
+  | '%'         { MOD }
+  | "<<"        { LSHIFT }
+  | ">>"        { RSHIFT }
+  | '&'         { AND }
+  | '|'         { OR }
+  | '^'         { XOR }
+  | "**"        { EXP }
+  | '('         { LPAREN }
+  | ')'         { RPAREN }
   | _ as c      { unexpected_char lexbuf c }
