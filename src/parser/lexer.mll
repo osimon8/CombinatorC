@@ -54,4 +54,6 @@ rule token = parse
   | '!'         { NOT }
   | "||"        { LOR }
   | "&&"        { LAND }
+  | "true"      { LIT 1 }
+  | "false"     { LIT 0 }
   | _ as c      { unexpected_char lexbuf c }

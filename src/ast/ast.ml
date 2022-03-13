@@ -24,6 +24,7 @@ type bexp =
   | LOR of bexp * bexp
   | NAND of bexp * bexp
   | NOR of bexp * bexp
+  | BOOL of bexp
 
 let vars_in_bexp (b:bexp) : string list = 
   let rec intern b =  
@@ -31,7 +32,8 @@ let vars_in_bexp (b:bexp) : string list =
     | Var v -> [ v ]
     | Lit _ -> []
     | Not b 
-    | Neg b -> intern b
+    | Neg b 
+    | BOOL b -> intern b
     | Plus (b1, b2)
     | Minus (b1, b2)
     | Mul (b1, b2) 
@@ -114,6 +116,9 @@ let optimize_bexp (b:bexp) : bexp =
     | Lte (Lit l1, b) -> Gt (o b, Lit l1)
     | Eq (Lit l1, b) -> Eq (o b, Lit l1)
     | Neq (Lit l1, b) -> Neq (o b, Lit l1)
+
+    | LAND (Lit l1, Lit l2) -> if l1 <> 0 && l2 <> 0 then Lit 1 else Lit 0
+    | LOR (Lit l1, Lit l2) -> if l1 <> 0 || l2 <> 0 then Lit 1 else Lit 0
     (* END SECTION N*)
 
     | Not Gt (b1, b2) -> Lte (o b1, o b2)
@@ -127,7 +132,9 @@ let optimize_bexp (b:bexp) : bexp =
     | Not Not Not b -> Not (o b)
     | Not Not b -> Neq (o b, Lit 0)
 
+    (* Nots and BOOLS can be optimized away, prefer them *)
     | Eq (b, Lit 0) -> Not (o b)
+    | Eq (b, Lit 1) -> BOOL (o b)
 
     (* LAND ands LORS take 2 combinators each, minimize their usage when possible *)
     | LAND (LAND (b1, b2), b3) -> LAND (Mul (o b1, o b2), o b3) 
@@ -142,6 +149,39 @@ let optimize_bexp (b:bexp) : bexp =
     | LAND (Not b1, Not b2) -> NOR (o b1, o b2) 
     | LOR (Not b1, Not b2) -> NAND (o b1, o b2) 
 
+    | LOR (b, Lit l) 
+    | LOR (Lit l, b) -> if l <> 0 then Lit 1 else BOOL (o b)
+
+    | LAND (b, Lit l) 
+    | LAND (Lit l, b) -> if l = 0 then Lit 0 else BOOL (o b)
+
+    (* advanced demorgan *)
+    | NOR (b, Lit l) 
+    | NOR (Lit l, b) -> if l <> 0 then Lit 0 else Not (o b)
+
+    | NAND (b, Lit l) 
+    | NAND (Lit l, b) -> if l = 0 then Lit 1 else Not (o b)
+
+    | LAND (BOOL b1, b2)
+    | LAND (b2, BOOL b1) -> LAND (o b1, o b2)
+
+    | LOR (BOOL b1, b2)
+    | LOR (b2, BOOL b1) -> LOR (o b1, o b2)
+
+    | NAND (BOOL b1, b2)
+    | NAND (b2, BOOL b1) -> NAND (o b1, o b2)
+
+    | NOR (BOOL b1, b2)
+    | NOR (b2, BOOL b1) -> NOR (o b1, o b2)
+
+    | BOOL (LAND (b1, b2)) -> LAND (b1, b2)
+    | BOOL (LOR (b1, b2)) -> LOR (b1, b2)
+    | BOOL (NAND (b1, b2)) -> NAND (b1, b2)
+    | BOOL (NOR (b1, b2)) -> NOR (b1, b2)
+
+    | BOOL Not b 
+    | Not BOOL b -> Not b
+    
     | Plus (b1, b2) -> Plus (o b1, o b2)
     | Minus (b1, b2) -> Minus (o b1, o b2)
     | Div (b1, b2) -> Div (o b1, o b2)
@@ -165,6 +205,7 @@ let optimize_bexp (b:bexp) : bexp =
     | NAND (b1, b2) -> NAND (o b1, o b2)
     | NOR (b1, b2) -> NOR (o b1, o b2)
     | Not b -> Not (o b)
+    | BOOL b -> BOOL (o b)
     | Lit _
     | Var _ -> b
     end in 
@@ -184,6 +225,7 @@ let string_of_bexp (b : bexp) : string =
         | Lit l -> string_of_int l
         | Neg b -> "-" ^ sob b
         | Not b -> "!" ^ sob b 
+        | BOOL b -> "(bool) " ^ sob b
         | Plus (b1, b2) -> bin b1 b2 "+"
         | Minus (b1, b2) -> bin b1 b2 "-"
         | Mul (b1, b2) -> bin b1 b2 "*"

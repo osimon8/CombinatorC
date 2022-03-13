@@ -98,6 +98,14 @@ let compile_bexp_to_circuit (b: bexp) : circuit list =
       , Dout id2, o_sig 
     in
 
+    let bool_cast b dop= 
+      let c, o, s = cb b in 
+      let id = entity_ctr () in 
+      let o_sig = sig_ctr () in
+      CG.add_edge g o (Din id);
+      c @ [ Decider (id, (Symbol s, dop, Const 0, Symbol o_sig, One)) ], Dout id, o_sig
+    in
+
     begin match b with 
     | Var v -> [], P inp_id, v (* we don't need new combinators, set output to the input pole  *)
     | Lit l -> let s = sig_ctr () in 
@@ -108,11 +116,8 @@ let compile_bexp_to_circuit (b: bexp) : circuit list =
               let o_sig = sig_ctr () in
               CG.add_edge g o (Ain id);
               c @ [ Arithmetic (id, (Symbol s, Mul, Const (-1), Symbol o_sig)) ], Aout id, o_sig
-    | Not b -> let c, o, s = cb b in 
-              let id = entity_ctr () in 
-              let o_sig = sig_ctr () in
-              CG.add_edge g o (Din id);
-              c @ [ Decider (id, (Symbol s, Eq, Const 0, Symbol o_sig, One)) ], Dout id, o_sig
+    | Not b -> bool_cast b Eq
+    | BOOL b -> bool_cast b Neq
     | Plus (b1, b2) -> a_binop b1 b2 Add
     | Minus (b1, b2) -> a_binop b1 b2 Sub
     | Mul (b1, b2) -> a_binop b1 b2 Mul
