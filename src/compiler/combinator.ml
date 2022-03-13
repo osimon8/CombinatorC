@@ -8,6 +8,8 @@ type data = symbol * value
 
 type signal = data list
 
+type size = int * int
+
 type arithemtic_op = 
  | Add
  | Sub
@@ -69,7 +71,15 @@ type combinator =
  | Constant of id * constant_config
  | Pole of id
 
-let id_of_combinator comb = 
+let size_of_combinator (comb:combinator) : size = 
+ begin match comb with 
+ | Arithmetic _  
+ | Decider _ -> (1, 2)
+ | Constant _ -> (1, 1)
+ | Pole _ -> (2, 2) (* TODO: handle other size poles? *)
+end
+
+let id_of_combinator (comb:combinator) : id = 
   begin match comb with 
   | Arithmetic (id, _) -> id 
   | Decider (id, _) -> id

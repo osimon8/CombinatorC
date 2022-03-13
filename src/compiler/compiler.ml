@@ -1,6 +1,7 @@
 open Ast
 open Circuit
 open Combinator
+open To_json
 open Utils
 
 let sig_list = 
@@ -54,7 +55,6 @@ let compile_bexp_to_circuit (b: bexp) : circuit list =
     let a_binop b1 b2 aop = 
       let o_sig = sig_ctr () in
       let id = entity_ctr () in
-      (* let wire_input () = CG.add_edge g (P inp_id) (Ain id) in *)
       begin match b1, b2 with 
                             | Lit l1, Lit l2 -> [ Arithmetic (id, (Const l1, aop, Const l2, Symbol o_sig)) ]
                             | Lit l, Var v -> wire_A id; [ Arithmetic (id, (Const l, aop, Symbol v, Symbol o_sig)) ]
@@ -70,7 +70,6 @@ let compile_bexp_to_circuit (b: bexp) : circuit list =
     let d_binop b1 b2 dop = 
       let o_sig = sig_ctr () in
       let id = entity_ctr () in
-      (* let wire_input () = CG.add_edge g (P inp_id) (Ain id) in *)
       begin match b1, b2 with 
                             | Lit l1, Lit l2 -> [ Decider (id, (Const l1, dop, Const l2, Symbol o_sig, One)) ]
                             | Lit l, Var v -> wire_D id; [ Decider (id, (Const l, dop, Symbol v, Symbol o_sig, One)) ]
@@ -156,7 +155,7 @@ let compile_bexp_to_circuit (b: bexp) : circuit list =
 
   CG.add_edge g o_conn (P (id_of_combinator o_pole));
 
-  [ (Red [], combs, g) ]
+  [ (Red [], combs, g, ([], [])) ]
 
 let lookup (id:id) (combs:combinator list) : combinator =
   List.find (fun c -> id_of_combinator c = id) combs 
@@ -165,7 +164,7 @@ let lookup (id:id) (combs:combinator list) : combinator =
   essentially just removes redundant constant combinators
 *)
 let rec primitive_optimization (vars:string list) (circuit:circuit) : circuit = 
-  let wire, combs, g = circuit in 
+  let wire, combs, g, _ = circuit in 
 
   let (~$) c = id_of_conn c in
   let (~$$) c = lookup ~$c combs in
@@ -205,11 +204,15 @@ let rec primitive_optimization (vars:string list) (circuit:circuit) : circuit =
                      
   List.iter (CG.remove_edge_e g) delete_edges;
   List.iter (CG.add_edge_e g) new_edges;
-  (wire, u_combs @ new_combs, g)
+  (wire, u_combs @ new_combs, g, ([], []))
+
+let wrap_io (ctr: unit -> value) (circuit:circuit) : circuit = 
+  let wire, combs, g, (input, output) = circuit in
+  (wire, combs, g, (input, output))
 
 (* Remap ids after combinators have been deleted through optimization passes *)
 let remap_ids (ctr: unit -> value) (circuit:circuit) : circuit = 
-  let wire, combs, g = circuit in 
+  let wire, combs, g, _ = circuit in 
   let id_map = List.map (fun c -> let i = ctr() in id_of_combinator c, i) combs in 
 
   let (~$) c = List.assoc (id_of_conn c) id_map in
@@ -236,7 +239,7 @@ let remap_ids (ctr: unit -> value) (circuit:circuit) : circuit =
                                         | Constant (_, cfg) -> Constant (i, cfg)
                                         | Pole _ -> Pole i
                                         end) combs in 
-  (wire, new_combs, new_g)
+  (wire, new_combs, new_g, ([], []))
 
 let compile_bexp_to_json ?optimize:(optimize=true) (b: bexp) : json list = 
   let circuits = compile_bexp_to_circuit b in 

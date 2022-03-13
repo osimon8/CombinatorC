@@ -11,7 +11,7 @@ let optimize = true
 let optimize_b = true
 
 let () =
-  let ast = parse("!A") in 
+  let ast = parse("!A + B + (2 * (C ** 4) - 3 * 2)") in 
   let ast = if optimize_b then optimize_bexp ast else ast in 
   print_endline (string_of_bexp ast);
 
