@@ -86,7 +86,7 @@ let json_of_combinator (c: combinator) (wire: wire) (g: connection_graph) (p:pla
   let x, y = p in
   `Assoc ([("entity_number", `Int id); 
           ("name", `String name);
-          ("position", `Assoc [("x", `Int x); ("y", `Int y)]);
+          ("position", `Assoc [("x", `Float x); ("y", `Float y)]);
           ] @ cfg_json @ conns)
 
  let json_of_circuit (id: id) (circuit: circuit) : json list = 

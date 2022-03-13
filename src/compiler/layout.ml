@@ -3,76 +3,126 @@ open Combinator
 open Array
 
 type grid = bool array array 
-type placement = int * int
+type placement = float * float
+
+let poi i j = (float_of_int i, float_of_int j)
+
+let string_of_placement p = 
+  let x, y = p in
+  "(" ^ (string_of_float x) ^ ", " ^ (string_of_float y) ^ ")"
+
 let conn_length = 10 
 
-let block_x, block_y = (10, 8) 
+let (+~) x y = Float.add x (float_of_int y)
+let (+~~) x y = Float.add (float_of_int x) y
 
-let fits_in_block (c:circuit) : bool = 
-  let _, combs, _, _ = c in
-  List.length combs <= block_x * (block_y / 2)
+let (-~) x y = Float.sub x (float_of_int y)
+let (/~) x y = Float.div (float_of_int x) y
 
-let gen_grid () : grid = Array.make_matrix conn_length conn_length false
+let (~~) p = (int_of_float (fst p), int_of_float (snd p))
+
+let center_of_size (p:placement) (s:size) : placement =
+  let px, py = p in
+  let sx, sy = s in 
+  (px +. (sx /~ 2.), py +. (sy /~ 2.)) 
+
+let gen_grid () : grid = 
+  let x = conn_length in 
+  let y = conn_length in 
+  Array.make_matrix x y false
+
+let index grid i j =
+  let i, j = ~~(i,j) in 
+  grid.(i).(j)
 
 let grid_size grid : size = Array.length (grid), Array.length (grid.(0))
 
-let is_valid_placement (grid:grid) (p:placement) (s:size) : bool = 
+let iter_over_size_in_grid (f: int -> int -> unit) (grid:grid) (p:placement) (s:size) : unit =
+  (* let x, y = center_of_size p s in *)
   let x, y = p in 
+  let xi, yi = int_of_float x, int_of_float y in
+  
   let sx, sy = s in
 
-  let bx, by = x + sx - 1, y + sy - 1 in 
+  let bx, by = xi + sx - 1, yi + sy - 1 in
+
+  for i = xi to bx do 
+    for j = yi to by do
+      f i j
+    done
+  done  
+
+let print_coords grid p s = 
+  iter_over_size_in_grid (fun i j -> print_endline (string_of_placement (poi i j)))
+   grid p s  
+
+let is_valid_placement (grid:grid) (p:placement) (s:size) : bool = 
+  let x, y = p in 
+  let xi, yi = int_of_float x, int_of_float y in
+
+  let sx, sy = s in
+  let bx, by = xi + sx - 1, yi + sy - 1 in 
+
   let gx, gy = grid_size grid in 
 
-  let valid = ref true in
+  if (bx >= gx || by >= gy) then false else  
+    let valid = ref true in
+    let f i j = 
+      valid := !valid && not (grid.(i).(j))
+    in
 
-  for i = x to bx do 
-    for j = y to by do 
-      valid := !valid && (bx < gx && by < gy) && not (grid.(i).(j))
-    done
-  done;
-  !valid
+    iter_over_size_in_grid f grid p s;
+    !valid
 
 let valid_placements (grid:grid) (s:size) : placement list = 
-  let gx, gy = grid_size grid in 
   let acc = ref [] in 
 
-  for i = 0 to gx - 1 do 
-    for j = 0 to gy - 1 do 
-      let p = (i, j) in 
-      if is_valid_placement grid p s then acc := p :: !acc 
-    done
-  done;
+  let f i j =      
+    let p = poi i j in 
+    if is_valid_placement grid p s then acc := p :: !acc 
+  in
+
+  iter_over_size_in_grid f grid (0., 0.) (grid_size grid);
   !acc
 
 let make_placement (grid:grid) (p:placement) (s:size) : unit = 
   if not (is_valid_placement grid p s) then failwith "attempted placement at filled position";
-  let x, y = p in 
-  let sx, sy = s in
 
-  for i = x to x + sx - 1 do 
-    for j = y to y + sy - 1 do 
-      grid.(i).(j) <- true 
-    done
-  done
+  let f i j = grid.(i).(j) <- true in
+  iter_over_size_in_grid f grid p s
 
-let place_identity (comb: combinator) : placement = 
+
+let place_identity (grid:grid) (comb: combinator) : placement = 
   let id = id_of_combinator comb in 
-  (id mod 8, 2 * (id / 8))
+  let s = size_of_combinator comb in
+  let l = conn_length + 1 in
+
+  let idp id = (float_of_int (id mod l), float_of_int (2 * (id / l))) in 
+
+  let p = ref (idp id) in 
+  let i = ref id in 
+
+  while not (is_valid_placement grid !p s) do 
+    i := !i + 1;
+    p := idp !i 
+  done;
+
+  make_placement grid !p s;
+  center_of_size !p (size_of_combinator comb)
 
 let layout_identity (c:circuit) : placement list = 
   let _, combs, _, _ = c in 
-  List.map place_identity combs
-  (* let intern x y combs = 
-    
-  in 
-  let _, _, pl = List.fold_left intern (0, 0, []) combs in 
-  pl *)
+  let g = gen_grid () in 
+  let f = place_identity g in 
+  List.map f combs
 
 let place_naive (grid:grid) (g:connection_graph) (comb: combinator) : placement = 
   let s = size_of_combinator comb in 
   let placements = valid_placements grid s in 
   let i = Random.int (List.length placements) in 
-  List.nth placements i
+  let p = List.nth placements i in 
+  make_placement grid p s;
+  center_of_size p s
 
 let layout_naive (c:circuit) : placement list = 
   let _, combs, g, _ = c in 
