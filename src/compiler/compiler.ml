@@ -83,8 +83,23 @@ let compile_bexp_to_circuit (b: bexp) : circuit list =
                                   c1 @ c2 @ [ Decider (id, (Symbol s1, dop, Symbol s2, Symbol o_sig, One)) ]
                             end, Dout id, o_sig in
 
+    let logi b1 b2 aop dop = 
+      let c1, o1, s1 = cb b1 in 
+      let c2, o2, s2 = cb b2 in
+      let id1 = entity_ctr () in 
+      let id2 = entity_ctr () in 
+      let t_sig = sig_ctr () in 
+      let o_sig = sig_ctr () in
+      CG.add_edge g o1 (Ain id1);
+      CG.add_edge g o2 (Ain id1);
+      CG.add_edge g (Aout id1) (Din id2);
+      c1 @ c2 @ [ Arithmetic (id1, (Symbol s1, aop, Symbol s2, Symbol t_sig) );
+                  Decider (id2, (Symbol t_sig, dop, Const 0, Symbol o_sig, One)) ]
+      , Dout id2, o_sig 
+    in
+
     begin match b with 
-    | Var v -> [], P inp_id, v (* we don't need new combinators, set output to the input pole *)
+    | Var v -> [], P inp_id, v (* we don't need new combinators, set output to the input pole  *)
     | Lit l -> let s = sig_ctr () in 
               let id = entity_ctr () in 
               [ Constant (id, [(s, l)]) ], C id, s (* lone lit is a constant *)
@@ -93,6 +108,11 @@ let compile_bexp_to_circuit (b: bexp) : circuit list =
               let o_sig = sig_ctr () in
               CG.add_edge g o (Ain id);
               c @ [ Arithmetic (id, (Symbol s, Mul, Const (-1), Symbol o_sig)) ], Aout id, o_sig
+    | Not b -> let c, o, s = cb b in 
+              let id = entity_ctr () in 
+              let o_sig = sig_ctr () in
+              CG.add_edge g o (Din id);
+              c @ [ Decider (id, (Symbol s, Eq, Const 0, Symbol o_sig, One)) ], Dout id, o_sig
     | Plus (b1, b2) -> a_binop b1 b2 Add
     | Minus (b1, b2) -> a_binop b1 b2 Sub
     | Mul (b1, b2) -> a_binop b1 b2 Mul
@@ -110,6 +130,10 @@ let compile_bexp_to_circuit (b: bexp) : circuit list =
     | Lte (b1, b2) -> d_binop b1 b2 Lte
     | Eq (b1, b2) -> d_binop b1 b2 Eq
     | Neq (b1, b2) -> d_binop b1 b2 Neq
+    | LAND (b1, b2) -> logi b1 b2 Mul Neq
+    | LOR (b1, b2) -> logi b1 b2 OR Neq
+    | NAND (b1, b2) -> logi b1 b2 Mul Eq
+    | NOR (b1, b2) -> logi b1 b2 OR Eq
     end 
   in 
   

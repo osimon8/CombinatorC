@@ -1,7 +1,6 @@
 type bexp =
   | Var of string
   | Lit of int
-  | Neg of bexp
   | Plus of bexp * bexp
   | Minus of bexp * bexp
   | Mul of bexp * bexp
@@ -19,13 +18,19 @@ type bexp =
   | Lte of bexp * bexp
   | Eq of bexp * bexp
   | Neq of bexp * bexp
-
+  | Neg of bexp
+  | Not of bexp
+  | LAND of bexp * bexp
+  | LOR of bexp * bexp
+  | NAND of bexp * bexp
+  | NOR of bexp * bexp
 
 let vars_in_bexp (b:bexp) : string list = 
   let rec intern b =  
     begin match b with 
     | Var v -> [ v ]
     | Lit _ -> []
+    | Not b 
     | Neg b -> intern b
     | Plus (b1, b2)
     | Minus (b1, b2)
@@ -43,7 +48,11 @@ let vars_in_bexp (b:bexp) : string list =
     | Gte (b1, b2)
     | Lte (b1, b2)
     | Eq (b1, b2)
-    | Neq (b1, b2) -> intern b1 @ intern b2
+    | Neq (b1, b2)
+    | LAND (b1, b2)
+    | LOR (b1, b2)
+    | NAND (b1, b2)
+    | NOR (b1, b2) -> intern b1 @ intern b2
     end in
   (Core.List.stable_dedup (intern b))
 
@@ -107,6 +116,32 @@ let optimize_bexp (b:bexp) : bexp =
     | Neq (Lit l1, b) -> Neq (o b, Lit l1)
     (* END SECTION N*)
 
+    | Not Gt (b1, b2) -> Lte (o b1, o b2)
+    | Not Lt (b1, b2) -> Gte (o b1, o b2)
+    | Not Gte (b1, b2) -> Lt (o b1, o b2)
+    | Not Lte (b1, b2) -> Gt (o b1, o b2)
+    | Not Eq (b1, b2) -> Neq (o b1, o b2)
+    | Not Neq (b1, b2) -> Eq (o b1, o b2)
+
+    | Not Lit l -> if l = 0 then Lit 1 else Lit 0 
+    | Not Not Not b -> Not (o b)
+    | Not Not b -> Neq (o b, Lit 0)
+
+    | Eq (b, Lit 0) -> Not (o b)
+
+    (* LAND ands LORS take 2 combinators each, minimize their usage when possible *)
+    | LAND (LAND (b1, b2), b3) -> LAND (Mul (o b1, o b2), o b3) 
+    | LOR (LAND (b1, b2), b3) -> LOR (Mul (o b1, o b2), o b3) 
+    | NAND (LAND (b1, b2), b3) -> NAND (Mul (o b1, o b2), o b3) 
+    | NOR (LAND (b1, b2), b3) -> NOR (Mul (o b1, o b2), o b3) 
+    | Not LAND (b1, b2) -> NAND (o b1, o b2) 
+    | Not LOR (b1, b2) -> NOR (o b1, o b2) 
+    | Not NAND (b1, b2) -> LAND (o b1, o b2) 
+    | Not NOR (b1, b2) -> LOR (o b1, o b2) 
+    (* demorgan *)
+    | LAND (Not b1, Not b2) -> NOR (o b1, o b2) 
+    | LOR (Not b1, Not b2) -> NAND (o b1, o b2) 
+
     | Plus (b1, b2) -> Plus (o b1, o b2)
     | Minus (b1, b2) -> Minus (o b1, o b2)
     | Div (b1, b2) -> Div (o b1, o b2)
@@ -125,6 +160,11 @@ let optimize_bexp (b:bexp) : bexp =
     | Lte (b1, b2) -> Lte (o b1, o b2)
     | Eq (b1, b2) -> Eq (o b1, o b2)
     | Neq (b1, b2) -> Neq (o b1, o b2)
+    | LAND (b1, b2) -> LAND (o b1, o b2)
+    | LOR (b1, b2) -> LOR (o b1, o b2)
+    | NAND (b1, b2) -> NAND (o b1, o b2)
+    | NOR (b1, b2) -> NOR (o b1, o b2)
+    | Not b -> Not (o b)
     | Lit _
     | Var _ -> b
     end in 
@@ -134,13 +174,16 @@ let optimize_bexp (b:bexp) : bexp =
   opti b passes
 
 let string_of_bexp (b : bexp) : string =
-  let rec sob b =
-    let bin b1 b2 op = "(" ^ sob b1 ^ op ^ sob b2 ^ ")" in
+  let rec sobi first b =
+    let sob = sobi false in
+    let bin b1 b2 op = let s = sob b1 ^ " " ^ op ^ " " ^ sob b2 in 
+                        if first then s else "(" ^ s ^ ")" in
     begin
         match b with
         | Var s -> s
         | Lit l -> string_of_int l
         | Neg b -> "-" ^ sob b
+        | Not b -> "!" ^ sob b 
         | Plus (b1, b2) -> bin b1 b2 "+"
         | Minus (b1, b2) -> bin b1 b2 "-"
         | Mul (b1, b2) -> bin b1 b2 "*"
@@ -158,6 +201,10 @@ let string_of_bexp (b : bexp) : string =
         | Lte (b1, b2) -> bin b1 b2 "<="
         | Eq (b1, b2) -> bin b1 b2 "=="
         | Neq (b1, b2) -> bin b1 b2 "!="
+        | LAND (b1, b2) -> bin b1 b2 "&&"
+        | LOR (b1, b2) -> bin b1 b2 "||"
+        | NAND (b1, b2) -> sobi first (Not (LAND (b1, b2))) 
+        | NOR (b1, b2) -> sobi first (Not (LOR (b1, b2))) 
       end
   in
-  sob b
+  sobi true b

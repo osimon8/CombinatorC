@@ -66,26 +66,25 @@ let json_of_symbol s =
   `Assoc [("type", `String "virtual"); ("name", `String ("signal-" ^ s))]
 
 let json_of_config (cfg:cfg) : string * json = 
+  let mk_sig pre s = (pre ^ "_signal", json_of_symbol s) in
+
   let parse_ao (pre:string) (o:aop) = 
     begin match o with 
-    | Symbol s -> (pre ^ "_signal", json_of_symbol s)
+    | Symbol s -> mk_sig pre s
     | Const c -> (pre ^ "_constant", `Int c)
-    | Each -> failwith "unsupported"
+    | Each -> mk_sig pre "each"
     end 
   in 
 
   let parse_do (pre:string) (o:dop) i = 
-    if i <> 1 then 
-      begin match o with 
-      | Symbol s -> (pre ^ "_signal", json_of_symbol s)
-      | _ -> failwith "unsupported"
-      end
-    else 
-      begin match o with 
-      | Symbol s -> (pre ^ "_signal", json_of_symbol s)
-      | Const c -> ("constant", `Int c)
-      | _ -> failwith "unsupported"
-      end 
+    begin match o with 
+    | Const c -> if i <> 1 then failwith "illegal argument to decider combinator"
+                else ("constant", `Int c)
+    | Symbol s -> mk_sig pre s
+    | Each -> mk_sig pre "each"
+    | Anything -> mk_sig pre "anything"
+    | Everything -> mk_sig pre "everything"
+    end
   in 
 
   let c_map (i:int) (data:data) =  

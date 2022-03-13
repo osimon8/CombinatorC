@@ -22,6 +22,10 @@ open Ast;;
 %token EQ
 %token NEQ
 
+%token NOT
+%token LOR
+%token LAND
+
 %token LPAREN
 %token RPAREN
 
@@ -38,7 +42,15 @@ toplevel:
   | b=bexp EOF { b }        
 
 bexp:
-  | b=b1 { b }  
+  | b=b_o { b }  
+
+b_o:
+  | l=b_o LOR r=b_a      { LOR(l, r) }
+  | b=b_a               { b }
+
+b_a:
+  | l=b_a LAND r=b1     { LAND(l, r) }
+  | b=b1               { b }
 
 b1:
   | l=b1 OR r=b2       { OR(l, r) }
@@ -86,6 +98,7 @@ b9:
 
 b10: 
   | MINUS b=b10        { Neg(b) }
+  | NOT b=b10          { Not(b) }
   | b=b11              { b }
 
 b11: 
