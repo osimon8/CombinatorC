@@ -26,12 +26,14 @@ let num = '-'?digit+
 let identifer = (character | ichar) (character | ichar | digit)*
 let signal = uppercase
 let whitespace = ['\t' ' ' '\r' '\n']
+let circuit_bind = "circuit"(whitespace+)
 
 rule token = parse
   | eof         { EOF }
   | whitespace+ { token lexbuf }  (* skip whitespace *)
   | signal { VAR (lexeme lexbuf) }
   | num    { LIT (int_of_string (lexeme lexbuf)) }
+  | circuit_bind { CIRCUIT_BIND }
   | '+'         { PLUS }
   | '-'         { MINUS }
   | '*'         { MUL }
@@ -56,4 +58,6 @@ rule token = parse
   | "&&"        { LAND }
   | "true"      { LIT 1 }
   | "false"     { LIT 0 }
+  | ';'         { SEMI }
+  | '='         { ASSIGN }
   | _ as c      { unexpected_char lexbuf c }

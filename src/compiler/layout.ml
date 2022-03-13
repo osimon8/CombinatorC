@@ -5,6 +5,8 @@ open Array
 type grid = bool array array 
 type placement = float * float
 
+type circuit_layout = placement * size * placement list 
+
 let poi i j = (float_of_int i, float_of_int j)
 
 let string_of_placement p = 
@@ -124,7 +126,7 @@ let place_naive (grid:grid) (g:connection_graph) (comb: combinator) : placement 
   make_placement grid p s;
   center_of_size p s
 
-let layout_naive (c:circuit) : placement list = 
+let layout_naive ?pos:(pos=(0.,0.)) (c:circuit) : placement list = 
   let _, combs, g, _ = c in 
   let grid : grid = gen_grid () in 
 
@@ -136,3 +138,25 @@ let layout_naive (c:circuit) : placement list =
 
   let placements = List.fold_left internal [] combs in 
   List.rev placements
+
+let layout ?pos:(pos=(0.,0.)) f (c:circuit) : circuit_layout = 
+  let placements = f c in 
+  let ox, oy = pos in 
+  let p_a = List.map (fun (x, y) -> (x +. ox, y +. oy)) placements in 
+  let min_x = List.fold_left (fun acc (x,_) -> min acc x) Float.max_float p_a in  
+  let min_y = List.fold_left (fun acc (_,y) -> min acc y) Float.max_float p_a in  
+  let max_x = List.fold_left (fun acc (x,_) -> max acc x) Float.min_float p_a in  
+  let max_y = List.fold_left (fun acc (_,y) -> max acc y) Float.min_float p_a in  
+
+  (min_x, min_y), (int_of_float (max_x -. min_x), int_of_float (max_y -. min_y)), p_a
+
+let layout_circuits (circuits: circuit list) : placement list list = 
+  let inter acc c =
+    let pos, size, placements = layout ~pos:(acc) layout_identity c in 
+    let px, py = pos in 
+    let _, sy = size in 
+    (px, py +~ sy +. 1.), (pos, size, placements)
+  in
+
+  let _, layouts = List.fold_left_map inter (0.,0.) circuits in 
+  List.map (fun (_, _, p) -> p) layouts

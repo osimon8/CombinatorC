@@ -26,6 +26,8 @@ type bexp =
   | NOR of bexp * bexp
   | BOOL of bexp
 
+type assignment = string * bexp
+
 let vars_in_bexp (b:bexp) : string list = 
   let rec intern b =  
     begin match b with 
