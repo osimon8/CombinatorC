@@ -35,86 +35,90 @@ let create_sig_ctr (vars:string list) =
     let v = ctr () in
     intern v
 
-let compile_bexp_to_circuit (b: bexp) : circuit list = 
+let compile_bexp_to_circuit ?output_sig:(output_sig="check") (b: bexp) : circuit list = 
   let vars = vars_in_bexp b in 
-  let has_vars = List.length vars > 0 in
+  let sigs = output_sig :: vars in
 
   let entity_ctr = create_ctr () in
-  let sig_ctr = create_sig_ctr vars in
+  let sig_ctr = create_sig_ctr sigs in
 
-  let inp_id = entity_ctr () in
-  let i_pole = Pole (inp_id) in 
   let g = CG.create () in 
 
-  let wire_input conn = CG.add_edge g (P inp_id) conn in
+  (* let wire_input conn = CG.add_edge g (P inp_id) conn in
   let wire_A i = wire_input (Ain i) in
-  let wire_D i = wire_input (Din i) in
-
+  let wire_D i = wire_input (Din i) in *)
+  let connect c1 c2 = 
+    if id_of_conn c1 <> -1 && id_of_conn c2 <> -1 then CG.add_edge g c1 c2 in  
 
   let rec cb b = 
     let a_binop b1 b2 aop = 
       let o_sig = sig_ctr () in
       let id = entity_ctr () in
-      begin match b1, b2 with 
-                            | Lit l1, Lit l2 -> [ Arithmetic (id, (Const l1, aop, Const l2, Symbol o_sig)) ]
-                            | Lit l, Var v -> wire_A id; [ Arithmetic (id, (Const l, aop, Symbol v, Symbol o_sig)) ]
-                            | Var v, Lit l -> wire_A id; [ Arithmetic (id, (Symbol v, aop, Const l, Symbol o_sig)) ]
-                            | Var v1, Var v2 -> wire_A id; [ Arithmetic (id, (Symbol v1, aop, Symbol v2, Symbol o_sig)) ]
-                            | _ -> let c1, o1, s1 = cb b1 in 
-                                   let c2, o2, s2 = cb b2 in 
-                                  CG.add_edge g o1 (Ain id);
-                                  CG.add_edge g o2 (Ain id);
-                                  c1 @ c2 @ [ Arithmetic (id, (Symbol s1, aop, Symbol s2, Symbol o_sig)) ]
-                            end, Aout id, o_sig in
+      let c, i = 
+        begin match b1, b2 with 
+          | Lit l1, Lit l2 -> [ Arithmetic (id, (Const l1, aop, Const l2, Symbol o_sig)) ], [] 
+          | Lit l, Var v -> [ Arithmetic (id, (Const l, aop, Symbol v, Symbol o_sig)) ], [id] 
+          | Var v, Lit l -> [ Arithmetic (id, (Symbol v, aop, Const l, Symbol o_sig)) ], [id] 
+          | Var v1, Var v2 ->[ Arithmetic (id, (Symbol v1, aop, Symbol v2, Symbol o_sig)) ], [id] 
+          | _ -> let c1, iids1, o1, s1 = cb b1 in 
+                  let c2, iids2, o2, s2 = cb b2 in 
+                connect o1 (Ain id);
+                connect o2 (Ain id);
+                c1 @ c2 @ [ Arithmetic (id, (Symbol s1, aop, Symbol s2, Symbol o_sig)) ], iids1 @ iids2
+        end in 
+    c, i, Aout id, o_sig in
 
     let d_binop b1 b2 dop = 
       let o_sig = sig_ctr () in
       let id = entity_ctr () in
-      begin match b1, b2 with 
-                            | Lit l1, Lit l2 -> [ Decider (id, (Const l1, dop, Const l2, Symbol o_sig, One)) ]
-                            | Lit l, Var v -> wire_D id; [ Decider (id, (Const l, dop, Symbol v, Symbol o_sig, One)) ]
-                            | Var v, Lit l -> wire_D id; [ Decider (id, (Symbol v, dop, Const l, Symbol o_sig, One)) ]
-                            | Var v1, Var v2 -> wire_D id; [ Decider (id, (Symbol v1, dop, Symbol v2, Symbol o_sig, One)) ]
-                            | _ -> let c1, o1, s1 = cb b1 in 
-                                   let c2, o2, s2 = cb b2 in 
-                                  CG.add_edge g o1 (Din id);
-                                  CG.add_edge g o2 (Din id);
-                                  c1 @ c2 @ [ Decider (id, (Symbol s1, dop, Symbol s2, Symbol o_sig, One)) ]
-                            end, Dout id, o_sig in
+      let c, i = 
+        begin match b1, b2 with 
+          | Lit l1, Lit l2 -> [ Decider (id, (Const l1, dop, Const l2, Symbol o_sig, One))], []
+          | Lit l, Var v -> [ Decider (id, (Const l, dop, Symbol v, Symbol o_sig, One))], [id]
+          | Var v, Lit l -> [ Decider (id, (Symbol v, dop, Const l, Symbol o_sig, One))], [id]
+          | Var v1, Var v2 -> [ Decider (id, (Symbol v1, dop, Symbol v2, Symbol o_sig, One))], [id] 
+          | _ -> let c1, iids1, o1, s1 = cb b1 in 
+                  let c2, iids2, o2, s2 = cb b2 in 
+                connect o1 (Din id);
+                connect o2 (Din id);
+                c1 @ c2 @ [ Decider (id, (Symbol s1, dop, Symbol s2, Symbol o_sig, One)) ], iids1 @ iids2
+          end
+      in c, i, Dout id, o_sig  in
 
     let logi b1 b2 aop dop = 
-      let c1, o1, s1 = cb b1 in 
-      let c2, o2, s2 = cb b2 in
+      let c1, iids1, o1, s1 = cb b1 in 
+      let c2, iids2, o2, s2 = cb b2 in
       let id1 = entity_ctr () in 
       let id2 = entity_ctr () in 
       let t_sig = sig_ctr () in 
       let o_sig = sig_ctr () in
-      CG.add_edge g o1 (Ain id1);
-      CG.add_edge g o2 (Ain id1);
-      CG.add_edge g (Aout id1) (Din id2);
+      connect o1 (Ain id1);
+      connect o2 (Ain id1);
+      connect (Aout id1) (Din id2);
       c1 @ c2 @ [ Arithmetic (id1, (Symbol s1, aop, Symbol s2, Symbol t_sig) );
                   Decider (id2, (Symbol t_sig, dop, Const 0, Symbol o_sig, One)) ]
-      , Dout id2, o_sig 
+      , iids1 @ iids2, Dout id2, o_sig
     in
 
     let bool_cast b dop= 
-      let c, o, s = cb b in 
+      let c, iids, o, s = cb b in 
       let id = entity_ctr () in 
       let o_sig = sig_ctr () in
-      CG.add_edge g o (Din id);
-      c @ [ Decider (id, (Symbol s, dop, Const 0, Symbol o_sig, One)) ], Dout id, o_sig
+      connect o (Din id);
+      c @ [ Decider (id, (Symbol s, dop, Const 0, Symbol o_sig, One)) ], iids, Dout id, o_sig
     in
 
     begin match b with 
-    | Var v -> [], P inp_id, v (* we don't need new combinators, set output to the input pole  *)
+    (* | Var v -> [], P inp_id, v we don't need new combinators, set output to the input pole  *)
+    | Var v -> [], [], P (-1), v (* IO wrapping will handle, set to dummy conn  *)
     | Lit l -> let s = sig_ctr () in 
               let id = entity_ctr () in 
-              [ Constant (id, [(s, l)]) ], C id, s (* lone lit is a constant *)
-    | Neg b -> let c, o, s = cb b in 
+              [ Constant (id, [(s, l)]) ], [], C id, s (* lone lit is a constant *)
+    | Neg b -> let c, iids, o, s = cb b in 
               let id = entity_ctr () in 
               let o_sig = sig_ctr () in
-              CG.add_edge g o (Ain id);
-              c @ [ Arithmetic (id, (Symbol s, Mul, Const (-1), Symbol o_sig)) ], Aout id, o_sig
+              connect o (Ain id);
+              c @ [ Arithmetic (id, (Symbol s, Mul, Const (-1), Symbol o_sig)) ], iids, Aout id, o_sig
     | Not b -> bool_cast b Eq
     | BOOL b -> bool_cast b Neq
     | Plus (b1, b2) -> a_binop b1 b2 Add
@@ -141,30 +145,83 @@ let compile_bexp_to_circuit (b: bexp) : circuit list =
     end 
   in 
   
-  let inp = if has_vars then 
-            let id = entity_ctr () in
-            (wire_input (C id);
-            [i_pole; Constant (id, List.map (fun v -> v, 1) vars)]) 
-            else [i_pole] in
+  let combs, iids, o_conn, o_sig = cb b in
+  let oid = id_of_conn o_conn in 
+  let fix_o_sig c = 
+    let id = id_of_combinator c in 
+    if id = oid then
+        begin match c with
+        | Arithmetic (_, (op1, aop, op2, _)) -> Arithmetic (id, (op1, aop, op2, Symbol output_sig))
+        | Decider (_, (op1, dop, op2, _, t)) -> Decider (id, (op1, dop, op2, Symbol output_sig, t))
+        | Constant (_, sigs) -> Constant (id, List.map (fun (_, v) -> output_sig, v) sigs) 
+        | Pole _ -> c
+      end
+  else c 
+  in 
 
-  let cmbs, o_conn, _ = cb b in
+  let combs = List.map fix_o_sig combs in 
 
-  let o_pole = Pole (entity_ctr ()) in
+  let m_id = List.fold_left (fun acc c -> max acc (id_of_combinator c)) (-1) combs in
 
-  let combs = inp @ cmbs @ [ o_pole ] in 
-
-  CG.add_edge g o_conn (P (id_of_combinator o_pole));
-
-  [ (Red [], combs, g, ([], [])) ]
+  [ (Red [], combs, g, (m_id, vars, [o_sig], iids, [oid])) ]
 
 let lookup (id:id) (combs:combinator list) : combinator =
   List.find (fun c -> id_of_combinator c = id) combs 
 
+let i_conn_of_id (id:id) (combs: combinator list) : connection =
+  begin match lookup id combs with 
+  | Arithmetic _ -> Ain id 
+  | Decider _ -> Din id 
+  | Constant _ -> C id 
+  | Pole _ -> P id 
+  end
+
+let o_conn_of_id (id:id) (combs: combinator list) : connection =
+  begin match lookup id combs with 
+  | Arithmetic _ -> Aout id 
+  | Decider _ -> Dout id 
+  | Constant _ -> C id 
+  | Pole _ -> P id 
+  end
+
+let wrap_io (ctr: unit -> value) (circuit:circuit) : circuit = 
+  let wire, combs, g, meta = circuit in
+  let m_id, i_sigs, o_sigs, input, output = meta in 
+
+  let entity_ctr = create_ctr ~i:(m_id + 1) () in 
+  let has_input = List.length i_sigs > 0 in 
+
+  let inp_id = entity_ctr () in
+  let i_pole = Pole (inp_id) in 
+
+  let wire_input conn = CG.add_edge g (P inp_id) conn in
+  let wire_in i = wire_input (i_conn_of_id i combs) in
+
+  let inp = if has_input then 
+            let id = entity_ctr () in
+            (wire_input (C id);
+            [i_pole; Constant (id, List.map (fun v -> v, 1) i_sigs)]) 
+            else [i_pole] in
+
+  let oid = entity_ctr () in 
+  let o_pole = Pole (oid) in
+
+  let wire_out i = CG.add_edge g (o_conn_of_id i combs) (P oid) in
+
+  List.iter wire_in input;
+  List.iter wire_out output;
+
+  let new_combs = o_pole :: inp @ combs in
+  let iids = List.map id_of_combinator inp in 
+
+  (wire, new_combs, g, (entity_ctr () - 1, i_sigs, o_sigs, iids, [oid]))
+
 (* basic optimization that optimizes from the structure of the bexp compiler
-  essentially just removes redundant constant combinators
+  essentially just removes redundant constant combinators. Doesn't update meta 
 *)
-let rec primitive_optimization (vars:string list) (circuit:circuit) : circuit = 
-  let wire, combs, g, _ = circuit in 
+let rec primitive_optimization (circuit:circuit) : circuit = 
+  let wire, combs, g, meta = circuit in 
+  let _, i_sigs, _, _, _ = meta in
 
   let (~$) c = id_of_conn c in
   let (~$$) c = lookup ~$c combs in
@@ -172,7 +229,7 @@ let rec primitive_optimization (vars:string list) (circuit:circuit) : circuit =
   let bind_conn cc oc i acc = 
     begin match lookup i combs with 
       | Constant (_, cfg) -> begin match cfg with 
-                              | (s, v) :: [] -> if List.mem s vars then acc else 
+                              | (s, v) :: [] -> if List.mem s i_sigs then acc else 
                               let d, n, sigs, dels = acc in 
                               let e = CG.succ_e g cc in            
                               d @ e, n, sigs @ List.map (fun _ -> ~$$oc, (s, v)) e, ~$$cc :: dels  
@@ -204,20 +261,17 @@ let rec primitive_optimization (vars:string list) (circuit:circuit) : circuit =
                      
   List.iter (CG.remove_edge_e g) delete_edges;
   List.iter (CG.add_edge_e g) new_edges;
-  (wire, u_combs @ new_combs, g, ([], []))
-
-let wrap_io (ctr: unit -> value) (circuit:circuit) : circuit = 
-  let wire, combs, g, (input, output) = circuit in
-  (wire, combs, g, (input, output))
+  (wire, u_combs @ new_combs, g, meta)
 
 (* Remap ids after combinators have been deleted through optimization passes *)
 let remap_ids (ctr: unit -> value) (circuit:circuit) : circuit = 
-  let wire, combs, g, _ = circuit in 
+  let wire, combs, g, meta = circuit in 
+  let _, i_sigs, o_sigs, input, output = meta in
   let id_map = List.map (fun c -> let i = ctr() in id_of_combinator c, i) combs in 
 
-  let (~$) c = List.assoc (id_of_conn c) id_map in
-  let (~$$) c = List.assoc (id_of_combinator c) id_map in
-
+  let (~!) i = List.assoc i id_map in 
+  let (~$) c = ~!(id_of_conn c) in
+  let (~$$) c = ~!(id_of_combinator c) in
 
   let new_g = CG.create () in 
 
@@ -239,16 +293,48 @@ let remap_ids (ctr: unit -> value) (circuit:circuit) : circuit =
                                         | Constant (_, cfg) -> Constant (i, cfg)
                                         | Pole _ -> Pole i
                                         end) combs in 
-  (wire, new_combs, new_g, ([], []))
+
+  let m_id = List.fold_left (fun acc (_, i) -> max acc i) (-1) id_map in
+  let new_input = List.map (~!) input in 
+  let new_output = List.map (~!) output in 
+
+  (wire, new_combs, new_g, (m_id, i_sigs, o_sigs, new_input, new_output))
+
+let circuit_concat (c1:circuit) (c2:circuit) : circuit = 
+  let wire, combs1, g1, meta = c1 in 
+  let m1, i_sigs2, o_sigs1, input1, output1 = meta in
+
+  let _, combs2, g2, meta = c1 in 
+  let m2, i_sigs1, o_sigs2, input2, output2 = meta in
+
+  let new_g = CG_ops.union g1 g2 in 
+
+  let l1 id = o_conn_of_id id combs1 in 
+  let l2 id = i_conn_of_id id combs2 in 
+
+  let inter oid = 
+    List.iter (fun iid -> CG.add_edge new_g (l1 oid) (l2 iid)) input2
+  in
+
+  List.iter inter output1;
+
+  let m = max m1 m2 in 
+  let i_sigs = i_sigs1 in 
+  let o_sigs = o_sigs2 in 
+  let input = input1 in 
+  let output = output2 in 
+
+  (wire, combs1 @ combs2, new_g, (m, i_sigs, o_sigs, input, output))
 
 let compile_bexp_to_json ?optimize:(optimize=true) (b: bexp) : json list = 
   let circuits = compile_bexp_to_circuit b in 
   let circuits = 
     if optimize then 
-      let vars = vars_in_bexp b in 
       let ctr = create_ctr () in 
-      let circuits_opt = List.map (primitive_optimization vars) circuits in
-      List.map (remap_ids ctr) circuits_opt  
+      (* List.iter (fun (_, _, g, _) -> print_edges g) circuits; *)
+      let circuits_opt = List.map primitive_optimization circuits in
+      let circuits_opt = List.map (remap_ids ctr) circuits_opt in
+      List.map (wrap_io ctr) circuits_opt 
     else circuits in
   let json_list = json_of_circuits circuits in 
   json_list

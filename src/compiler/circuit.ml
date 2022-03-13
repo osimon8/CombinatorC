@@ -20,12 +20,14 @@ module Node = struct
 end                                                                                 
 
 module CG = Graph.Imperative.Graph.Concrete(Node)
+module CG_ops = Graph.Oper.I(CG)
 
 type connection_graph = CG.t
 
-type circuit_io = (id list) * (id list) 
+(* max_id, input sigs, output sigs, input ids, output ids*)
+type circuit_meta = id * (symbol list) * (symbol list) * (id list) * (id list) 
 
-type circuit = wire * combinator list * connection_graph * circuit_io
+type circuit = wire * combinator list * connection_graph * circuit_meta
 
 let id_of_conn conn = 
   begin match conn with 
