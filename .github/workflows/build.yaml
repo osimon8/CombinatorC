@@ -5,20 +5,14 @@ on:
   - pull_request 
 
 jobs:
-
-
   build:
-    name: "Build and publish"
+    name: "Build"
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - macos-latest
-          - ubuntu-latest
-          - windows-latest
         ocaml-compiler:
           - 4.13.x
         include:
@@ -47,15 +41,30 @@ jobs:
       - name: Build 
         run: opam exec -- dune build
 
-      - name: Copy executable
-        run: cp _build/release-unix/src/main.exe ${{ matrix.release_name }}
+      # - name: Copy executable
+      #   run: cp _build/release-unix/src/main.exe ${{ matrix.release_name }}
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.release_name }}
+          path: _build/release-unix/src/main.exe
+
+  publish:
+    name: Publish
+    needs: build
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
       - name: Publish 
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
         with:
           name: "Executables"
           fail_on_unmatched_files: true
-          files: ${{ matrix.release_name }}
+          files: |
+            combc-ubuntu
+            combc-mac
+            combc-windows.exe
 
 

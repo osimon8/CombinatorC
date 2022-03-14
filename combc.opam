@@ -9,7 +9,6 @@ homepage: "https://github.com/osimon8/CombinatorC"
 bug-reports: "https://github.com/osimon8/CombinatorC/issues"
 depends: [
   "dune" {>= "3.0"}
-  "js_of_ocaml"
   "menhir"
   "core_kernel"
   "ocamlgraph"
