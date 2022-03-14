@@ -22,6 +22,10 @@ jobs:
             release_name: combc-windows.exe      
         ocaml-compiler:
           - 4.13.x     
+        os: 
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
 
 
     runs-on: ${{ matrix.os }}
