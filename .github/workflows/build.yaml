@@ -1,0 +1,56 @@
+name: Build and publish
+
+on:
+  pull_request:
+  push:
+  schedule:
+    # Prime the caches every Monday
+    - cron: 0 1 * * MON
+
+jobs:
+  build:
+    name: "Build and publish"
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+        release-name:
+          - combc-mac
+          - combc-ubuntu
+          - combc-windows.exe
+        ocaml-compiler:
+          - 4.13.x
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Use OCaml ${{ matrix.ocaml-compiler }}
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+
+      - run: opam install . --deps-only
+
+      - run: opam exec -- dune build
+      - run: cp _build/release-unix/src/main.exe ${{ matrix.release_name }}
+
+      - uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifactErrorsFailBuild: true
+          draft: true
+          artifacts: ${{ matrix.release_name }}
+          name: Executables
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit: ${{ github.sha }}
+          tag: ${{ github.sha }}
+
