@@ -45,15 +45,14 @@ jobs:
       - name: Build 
         run: opam exec -- dune build
 
-      # - name: Copy executable
-      #   run: cp _build/release-unix/src/main.exe ${{ matrix.release_name }}
+      - name: Copy executable
+        run: cp _build/release-unix/src/main.exe ${{ matrix.release_name }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.release_name }}
-          path: _build/release-unix/src/main.exe
-
+          
   publish:
     name: Publish
     needs: build
