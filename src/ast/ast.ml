@@ -80,12 +80,12 @@ let optimize_bexp (b:bexp) : bexp =
     | XOR (Lit 0, b)
     | Neg (Neg b) -> o b
 
-    | Mul (b, Lit 0)
-    | Mul (Lit 0, b)
-    | AND (b, Lit 0)
-    | AND (Lit 0, b) -> Lit 0
+    | Mul (_, Lit 0)
+    | Mul (Lit 0, _)
+    | AND (_, Lit 0)
+    | AND (Lit 0, _) -> Lit 0
 
-    | Exp (b, Lit 0) -> Lit 1
+    | Exp (_, Lit 0) -> Lit 1
 
     | Mul (Lit -1, b)
     | Mul (b, Lit -1)

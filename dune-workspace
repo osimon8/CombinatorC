@@ -1,0 +1,15 @@
+(lang dune 3.0)
+(context
+ (default
+       (name "release-unix")
+       (profile release)
+       (targets native)
+  )
+)
+(context
+ (default
+       (name "default")
+       (profile dev)
+       (targets native)
+ )
+)

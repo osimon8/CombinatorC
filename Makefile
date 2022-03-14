@@ -10,16 +10,31 @@ all: main.exe
 .FORCE:
 
 build:
-	dune build --auto-promote
+	dune build
+
+build-dev:
+	dune build
+	cp _build/default/src/main.exe combc 
+	chmod +w combc
+
+build-release:
+	dune build
+	cp _build/release-unix/src/main.exe combc 
+	chmod +w combc
 
 clean:
 	dune clean
+	rm -f combc
 	rm -rf *.exe
 
 utop: main.exe
 	dune utop
 
 run: 
-	make clean 
-	make 
-	dune exec ./main.exe code.fpl
+	dune exec --context=default combc code.fpl
+
+run-release:
+	dune exec --context=release-unix combc code.fpl
+
+run-js:
+	dune exec --context=release-js combc code.fpl

@@ -12,6 +12,11 @@
 *.fpl
 *.json
 
+.vscode/
+
+# executable
+combc
+
 # ocamlbuild working directory
 _build/
 

@@ -1,11 +1,17 @@
 (env
  (dev
   (flags
-   (:standard -w "+a-4-7-9-27-29-30-32..42-44-45-48-50-60-66..70"))))
+   (:standard -w "+a-4-7-9-27-29-30-32..42-44-45-48-50-60-66..70")))
+  (release 
+   (ocamlopt_flags (:standard -O3)) 
+   (js_of_ocaml (compilation_mode whole_program))
+   )
+  )
 
 (executable
- (public_name main)
+ (public_name combc)
  (name main)
+ (modes native)
  (modules main encode)
- (libraries unix str yojson zlib base64 memcpy utils parse compiler)
- (promote (until-clean)))
+ (libraries yojson zlib base64 memcpy utils parse compiler))
+ 
