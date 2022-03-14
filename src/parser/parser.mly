@@ -44,14 +44,14 @@ open Ast;;
 
 toplevel:
   | b=b_seq EOF { b }
-  | b=bexp EOF { [("check", b)] }         
-
+          
 b_seq:
   | a1=b_seq SEMI a2=b_assn { a1 @ a2 }
   | b=b_assn    { b }
 
 b_assn:
   | CIRCUIT_BIND v=b_var ASSIGN b=bexp { [(v, b)] }
+  | b=bexp { [("check", b)] } 
 
 bexp:
   | b=b_o { b } 

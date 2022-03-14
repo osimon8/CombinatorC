@@ -9,6 +9,8 @@
 *.cmxa
 
 *.exe
+*.fpl
+*.json
 
 # ocamlbuild working directory
 _build/

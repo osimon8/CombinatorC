@@ -22,4 +22,4 @@ utop: main.exe
 run: 
 	make clean 
 	make 
-	dune exec ./main.exe
+	dune exec ./main.exe code.fpl
