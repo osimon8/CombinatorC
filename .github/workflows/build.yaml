@@ -1,13 +1,13 @@
 name: Build and publish
 
 on:
-  - push
-  - pull_request 
+  push:
+    tags:
+      - "v*"
 
 jobs:
   build:
     name: "Build"
-    if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
     strategy:
