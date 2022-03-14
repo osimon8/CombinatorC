@@ -31,6 +31,8 @@ A CombinatorC program starts with optional compiler directives, and is followed 
 
 Programs will be compiled into a set of circuits, each including an input pole and output pole. Wire the intended circuit inputs to the input pole. 
 
+Comments can be writted using `\\`.
+
 ### Signals 
 
 Currently supported signals are the capital letters, for example `A`. Signals are used to set the output of a circuit binding, and also can be used in expressions. Support for more signals and arbitrary temporary variable naming is planned. 
@@ -91,13 +93,19 @@ Currently, the only supported directive is `LAYOUT`, which determines how circui
 
 A more sophisticated layout strategy using simulated annealing is planned for future versions. 
 
+### More Details
+
+More details on the grammar can be found by looking at [parser.mly](src/parser/parser.mly).
+
 ## Example Program 
 
 Here is an example program:
 
     #LAYOUT IDENTITY
-
+    
     circuit D = 10 + ((A || B) && (C % 2)) + !5;
+
+    \\ This is a comment
 
     circuit E = 45 + D;
 
