@@ -1,7 +1,7 @@
 (lang dune 3.0)
 (using menhir 2.1)
 (name combc)
-(version 0.1.5)
+(version 0.1.6)
 (license "GPL-3.0")
 (authors "Owen Simon <osimon922@gmail.com>")
 (maintainers "Owen Simon <osimon922@gmail.com>")

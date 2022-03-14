@@ -52,7 +52,8 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.release_name }}
-          
+          path: ${{ matrix.release_name }}
+
   publish:
     name: Publish
     needs: build
