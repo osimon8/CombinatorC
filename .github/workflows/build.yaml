@@ -52,7 +52,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.release_name }}
-          path: ${{ matrix.release_name }}
+          path: artifacts
 
   publish:
     name: Publish
@@ -78,8 +78,8 @@ jobs:
           name: "Executables"
           fail_on_unmatched_files: true
           files: |
-           combc-ubuntu
-           combc-mac
-           combc-windows.exe
+           artifacts/combc-ubuntu
+           artifacts/combc-mac
+           artifcats/combc-windows.exe
 
 
