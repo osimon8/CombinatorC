@@ -11,7 +11,7 @@ let optimize = true
   using comparison operations may not compile *)
 let optimize_b = true
 
-let usage_msg = "main [--output-json] <file1>"
+let usage_msg = "combc [--output-json] <file1>"
 let input_file = ref None
 let output_json = ref false 
 let speclist = [("--output-json", Arg.Set output_json, "Output json instead of blueprint string")] 
