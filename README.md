@@ -3,9 +3,9 @@ A C-style programming language that compiles into Factorio combinator blueprints
 
 I intend to create a language that is useful for designing complex circuits that are actually used for real Factorio gameplay, and not just as an academic curiosity. My original plan was to create a C-style language, but as development continues, it is likely that the language will change into something that more resembles something like Verilog in order to make it more practical. As such, I might the change the name, stay tuned! 
 
-The compiler is built in OCaml, and uses [Dune](https://dune.build/)
+The compiler is built in OCaml, and uses [Dune](https://dune.build/).
 
-Executables for Ubuntu, Mac, and Windows can be found in the releases section of the repository. 
+**Executables for Ubuntu, Mac, and Windows can be found in the releases section of the repository.** 
 
 To build from source, install dependencies using:
 
@@ -52,21 +52,33 @@ Programs that do not use circuit bindings and instead consist of a single expres
 
 #### Operators
 
-There are two types of operators, numeric operators and boolean operators. 
+There are two types of operators, numeric operators, decision operators, and boolean operators. 
 
-Numeric operators compute mathematical results as expected. Supported operations: `+`,`-`,`*`,`/`,`%`, `**`, `<<`,`>>`,`|`,`&`,`^`. Note: `**` is exponentiation, and `^` is bitwise XOR. 
+Numeric operators compute mathematical results as expected. Supported operations: `+`, `-`, `*`, `/`, `%`, `**`, `<<`, `>>`, `|`, `&`, `^`
 
-Here is an example numeric expression: `A + (B - 4) ** (3 >> 6 * C)`
+ Note: `**` is exponentiation, and `^` is bitwise XOR. 
 
-Boolean operators compute a boolean result `1` or `0`. Supported operations: `&&`,`||`,`!`.
+Example numeric expression:
 
-Here is an example boolean expression: `(A && B) || !C`
+    A + (B - 4) ** (3 >> 6 * C)
 
-Numeric operators and boolean operators can be combined arbitrarily, for example:
+Decision operators compute a boolean result `1` or `0` from numeric operands. Supported operations: `==`, `!=`, `>`, `>=`, `<`, `<=`
 
-`10 + ((A || B) && (C % 2)) + !5`
+Example decision expression:
 
-This is because boolean operators produce either `1` or `0`, and input values `0` are interpreted as `false`, while any other input is interpreted as `true`. 
+    A > 4  
+
+Boolean operators compute a boolean result `1` or `0`. Supported operations: `&&`, `||`, `!`
+
+Example boolean expression:
+
+    (A && B) || !C
+
+Numeric, decision, and boolean operators can be combined arbitrarily, for example:
+
+`10 + ((A || B) && !(C % 2) || (D <= 4)) - !5`
+
+This is because boolean values are equivalent to numeric values `1` or `0`, and input values `0` are interpreted as `false`, while any other input is interpreted as `true` for boolean operators. 
 
 Note that this means `!!<exp>` is not necessarily equal to `<exp>`, since the first NOT operator will output either `0` or `1`. This means the expression `!!<exp>` can be used to yield the truth value `1` or `0` from an expression. 
 
@@ -107,7 +119,7 @@ Here is an example program:
 
     \\ This is a comment
 
-    circuit E = 45 + D;
+    circuit E = D > 45;
 
     (65 + 12) >> 2
 
@@ -120,12 +132,12 @@ This program will layout the circuits using the `IDENTITY` strategy (this line i
 Note that if you intend a circuit binding to be the last output, you must write out the whole binding expression, and not just the output signal. For example:
 
     circuit D = 10 + ((A || B) && (C % 2)) + !5;
-    circuit E = 45 + D
+    circuit E = D > 45 
 
 If you instead wrote: 
 
     circuit D = 10 + ((A || B) && (C % 2)) + !5;
-    circuit E = 45 + D;
+    circuit E = D > 45;
     E
 
 This would be interpreted as three separate circuits, with the final circuit consisting of just a single expression that is equal to the input signal `E`. 
