@@ -1,13 +1,12 @@
 name: Build and publish
 
 on:
-  pull_request:
-  push:
-  schedule:
-    # Prime the caches every Monday
-    - cron: 0 1 * * MON
+  - push
+  - pull_request 
 
 jobs:
+
+
   build:
     name: "Build and publish"
     if: github.ref == 'refs/heads/main'
@@ -42,19 +41,21 @@ jobs:
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
 
-      - run: opam install . --deps-only
+      - name: Install deps
+        run: opam install . --deps-only
 
-      - run: opam exec -- dune build
-      - run: cp _build/release-unix/src/main.exe ${{ matrix.release_name }}
+      - name: Build 
+        run: opam exec -- dune build
 
-      - uses: ncipollo/release-action@v1
+      - name: Copy executable
+        run: cp _build/release-unix/src/main.exe ${{ matrix.release_name }}
+
+      - name: Publish 
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          allowUpdates: true
-          artifactErrorsFailBuild: true
-          draft: true
-          artifacts: ${{ matrix.release_name }}
-          name: Executables
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit: ${{ github.sha }}
-          tag: ${{ github.sha }}
+          name: "Executables"
+          fail_on_unmatched_files: true
+          files: ${{ matrix.release_name }}
+
 
