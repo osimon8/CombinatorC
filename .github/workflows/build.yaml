@@ -67,13 +67,19 @@ jobs:
           fetch-depth: 0
 
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
+
+      - name: Test - View working directory 
+        run: ls -R 
 
       - name: Publish 
         uses: softprops/action-gh-release@v1
         with:
           name: "Executables"
           fail_on_unmatched_files: true
-          files: combc-*/combc-*
+          files: |
+           combc-ubuntu
+           combc-mac
+           combc-windows.exe
 
 
