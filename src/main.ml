@@ -30,7 +30,7 @@ let () =
 
   let code = 
   try 
-    Core.In_channel.read_all name
+    Core_kernel.In_channel.read_all name
   with Sys_error s -> failwith s 
   in
 

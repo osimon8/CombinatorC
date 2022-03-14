@@ -58,7 +58,7 @@ let vars_in_bexp (b:bexp) : string list =
     | NAND (b1, b2)
     | NOR (b1, b2) -> intern b1 @ intern b2
     end in
-  (Core.List.stable_dedup (intern b))
+  (Core_kernel.List.stable_dedup (intern b))
 
 
 let optimize_bexp (b:bexp) : bexp = 

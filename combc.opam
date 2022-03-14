@@ -11,7 +11,7 @@ depends: [
   "dune" {>= "3.0"}
   "js_of_ocaml"
   "menhir"
-  "core"
+  "core_kernel"
   "ocamlgraph"
   "yojson"
   "zlib"

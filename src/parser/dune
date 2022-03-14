@@ -1,6 +1,6 @@
 (library
  (name parse)
- (libraries ast compiler unix str))
+ (libraries ast compiler))
 
 (ocamllex lexer)
 

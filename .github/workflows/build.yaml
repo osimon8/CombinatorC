@@ -24,11 +24,11 @@ jobs:
           - 4.13.x
         include:
           - os: macos-latest
-            release-name: combc-mac
+            release_name: combc-mac
           - os: ubuntu-latest
-            release-name: combc-ubuntu
+            release_name: combc-ubuntu
           - os: windows-latest
-            release-name: combc-windows.exe           
+            release_name: combc-windows.exe           
 
 
     runs-on: ${{ matrix.os }}

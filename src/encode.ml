@@ -15,13 +15,13 @@ let bigstring_of_string (src: string): Zlib.bigstring =
   let len = String.length src in
   let dims = Array.of_list [len] in 
   let dst = Genarray.create char c_layout dims in
-  let src = Core.Bytes.of_string src in
+  let src = Core_kernel.Bytes.of_string src in
   Memcpy.(memcpy_from_bytes (bigarray Ctypes.genarray dims char)) ~src ~dst ~dst_off:0;
   array1_of_genarray dst
 
 let string_of_bigstring (src: Zlib.bigstring) (len: int) : string =
   let dst :bytes = Bytes.init len (fun i -> Array1.unsafe_get src i) in
-  Core.Bytes.to_string dst
+  Core_kernel.Bytes.to_string dst
 
 let encode (name : string) entities = 
   let json = to_json_string (json_output name entities) in 
