@@ -25,15 +25,22 @@ let digit = ['0'-'9']
 let num = '-'?digit+
 let identifer = (character | ichar) (character | ichar | digit)*
 let signal = uppercase
+let single_case_word = (uppercase | ichar)(uppercase | ichar)+ | (lowercase | ichar)(lowercase | ichar)+
 let whitespace = ['\t' ' ' '\r' '\n']
 let circuit_bind = "circuit"(whitespace+)
+let newline = '\n' | "\r\n" | eof
+let comment = "//"[^'\r''\n']*newline
+let directive = '#'
 
 rule token = parse
   | eof         { EOF }
+  | comment     
   | whitespace+ { token lexbuf }  (* skip whitespace *)
   | signal { VAR (lexeme lexbuf) }
   | num    { LIT (int_of_string (lexeme lexbuf)) }
   | circuit_bind { CIRCUIT_BIND }
+  | directive   { DIRECTIVE }
+  | single_case_word  { WORD (lexeme lexbuf) }
   | '+'         { PLUS }
   | '-'         { MINUS }
   | '*'         { MUL }

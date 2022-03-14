@@ -1,12 +1,12 @@
 open Circuit
 open Combinator
 open Array
+open Config
 
 type grid = bool array array 
 type placement = float * float
 
 type circuit_layout = placement * size * placement list 
-
 let poi i j = (float_of_int i, float_of_int j)
 
 let string_of_placement p = 
@@ -112,7 +112,7 @@ let place_identity (grid:grid) (comb: combinator) : placement =
   make_placement grid !p s;
   center_of_size !p (size_of_combinator comb)
 
-let layout_identity (c:circuit) : placement list = 
+let layout_identity ?pos:(pos=(0.,0.)) (c:circuit) : placement list = 
   let _, combs, _, _ = c in 
   let g = gen_grid () in 
   let f = place_identity g in 
@@ -151,8 +151,16 @@ let layout ?pos:(pos=(0.,0.)) f (c:circuit) : circuit_layout =
   (min_x, min_y), (int_of_float (max_x -. min_x), int_of_float (max_y -. min_y)), p_a
 
 let layout_circuits (circuits: circuit list) : placement list list = 
+  let { layout=l } = get_config () in 
+  let strategy =
+    begin match l with 
+    | Identity -> layout_identity
+    | Naive -> layout_naive
+    end
+in
+
   let inter acc c =
-    let pos, size, placements = layout ~pos:(acc) layout_identity c in 
+    let pos, size, placements = layout ~pos:(acc) strategy c in 
     let px, py = pos in 
     let _, sy = size in 
     (px, py +~ sy +. 1.), (pos, size, placements)

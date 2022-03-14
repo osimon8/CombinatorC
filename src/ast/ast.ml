@@ -132,7 +132,7 @@ let optimize_bexp (b:bexp) : bexp =
 
     | Not Lit l -> if l = 0 then Lit 1 else Lit 0 
     | Not Not Not b -> Not (o b)
-    | Not Not b -> Neq (o b, Lit 0)
+    | Not Not b -> BOOL (o b)
 
     (* Nots and BOOLS can be optimized away, prefer them *)
     | Eq (b, Lit 0) -> Not (o b)

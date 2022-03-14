@@ -1,5 +1,6 @@
 %{
 open Ast;;
+open Compiler.Directive;;
 %}
 
 %token EOF
@@ -33,18 +34,32 @@ open Ast;;
 %token ASSIGN
 %token SEMI
 
+%token DIRECTIVE
+%token <string> WORD
+
 %token <string> VAR
 %token <int> LIT
 
 %start toplevel
 
-%type <Ast.assignment list> toplevel  
+%type <directive list * Ast.assignment list> toplevel  
 %type <Ast.bexp> bexp
 %%
 
 toplevel:
-  | b=b_seq EOF { b }
-          
+  | p=program EOF { p }
+
+program:
+  | d=dir_seq b=b_seq  { (d, b) }
+  | b=b_seq             { ([], b) }
+
+dir_seq: 
+  | d1=dir_seq d2=directive   { d1 @ d2 }
+  | d=directive               { d }
+
+directive:
+  | DIRECTIVE d=WORD a=WORD   { [parse_directive d a] } 
+
 b_seq:
   | a1=b_seq SEMI a2=b_assn { a1 @ a2 }
   | b=b_assn    { b }

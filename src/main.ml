@@ -2,7 +2,8 @@ open Utils
 open Parse
 open Ast
 open Encode
-open Compiler
+open Compiler.Compile
+open Compiler.Config
 
 let optimize = true
 
@@ -33,7 +34,9 @@ let () =
   with Sys_error s -> failwith s 
   in
 
-  let assignment_list = parse code in 
+  let directives, assignment_list = parse code in 
+  let cfg = config_of_directives directives in 
+  set_config cfg;
 
   let f i (o_sig, ast) =
       let ast = if optimize_b then optimize_bexp ast else ast in 
