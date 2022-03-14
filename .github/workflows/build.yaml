@@ -61,20 +61,19 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
       - name: Download artifacts
         uses: actions/download-artifact@v2
-
-      - name: Copy executables
-        run: cp -a /home/runner/work/CombinatorC/CombinatorC/. ./
 
       - name: Publish 
         uses: softprops/action-gh-release@v1
         with:
           name: "Executables"
           fail_on_unmatched_files: true
-          files: |
-            combc-ubuntu
-            combc-mac
-            combc-windows.exe
+          files: combc-*/combc-*
 
 
