@@ -13,15 +13,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ocaml-compiler:
-          - 4.13.x
         include:
           - os: macos-latest
             release_name: combc-mac
           - os: ubuntu-latest
             release_name: combc-ubuntu
           - os: windows-latest
-            release_name: combc-windows.exe           
+            release_name: combc-windows.exe      
+        ocaml-compiler:
+          - 4.13.x     
 
 
     runs-on: ${{ matrix.os }}
