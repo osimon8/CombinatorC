@@ -40,7 +40,7 @@ A CombinatorC program starts with optional compiler directives, and is followed 
 
 Programs will be compiled into a set of circuits, each including an input pole and output pole. Wire the intended circuit inputs to the input pole. 
 
-Comments can be writted using `\\`.
+Comments can be writted using `//`.
 
 ### Signals 
 
@@ -126,14 +126,14 @@ Here is an example program:
     
     circuit D = 10 + ((A || B) && (C % 2)) + !5;
 
-    \\ This is a comment
+    // This is a comment
 
     circuit E = D > 45;
 
     (65 + 12) >> 2
 
 
-This program will layout the circuits using the `IDENTITY` strategy (this line is unncessary, because this is the default behavior). It will produce three distinct circuits:
+This program will layout the circuits using the `IDENTITY` strategy (this line is unnecessary, because this is the default behavior). It will produce three distinct circuits:
 - The first circuit has output signal `D`, and takes inputs `A`, `B`, and `C`. 
 - The second circuit has output signal `E`, and takes input `D`. **This is not the same signal `D` as the output of the first circuit, it is a separate input and not related to the first.**
 - The third circuit has output signal checkmark, and takes no inputs. 
