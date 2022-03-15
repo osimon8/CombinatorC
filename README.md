@@ -25,6 +25,15 @@ Optionally, you can set the flag `--output-json` to output a JSON string represe
 
 The output blueprint will have the name of the input file.
 
+### Running on Windows
+
+If you encounter an error that states you are missing "zlib1.dll", here is the fix: 
+
+- Download the ZIP file available [here](https://www.dll-files.com/download/7e4b778eb31fdf5a52c7476bb78bdb1d/zlib1.dll.html?c=alFOcnFjelJTMmF1ZjhhV01CK0NZdz09)
+- Unzip it, and place "zlib1.dll" into C:\Windows\System32
+
+This error may be possible on other operating systems. If you encounter it, please let me know in the "Issues" tab, and follow the steps for installing dynamically linked libraries on your OS.
+
 ### Running on Mac 
 
 By default MacOS will block executables from unknown developers. To get around this, navigate to the install location and run the following commands:
@@ -36,7 +45,7 @@ Now, you should be able to run the compiler normally.
 
 ## Language 
 
-A CombinatorC program starts with optional compiler directives, and is followed by an optional list circuit bindings that are terminated by semicolons. A final output circuit is required, which can either be a circuit binding or an expression. This should not be terminated by a semicolon.  
+A CombinatorC program starts with optional compiler directives, and is followed by an optional list of circuit bindings that are terminated by semicolons. A final output circuit is required, which can either be a circuit binding or an expression. This should not be terminated by a semicolon.  
 
 Programs will be compiled into a set of circuits, each including an input pole and output pole. Wire the intended circuit inputs to the input pole. 
 
@@ -97,7 +106,7 @@ Precedence of operators adheres to the standards of C++.
 
 A circuit binding has the syntax `circuit <output_signal> = <expression>`. If your program has only a single circuit, it should not be terminated by a semicolon. Here is an example circuit binding: 
 
-`circuit D = (A + B - C) / 45`
+    circuit D = (A + B - C) / 45
 
 This produces a circuit with the output signal `D`. 
 
