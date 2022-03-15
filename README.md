@@ -9,7 +9,7 @@ The compiler is built in OCaml, and uses [Dune](https://dune.build/).
 
 To build from source, install dependencies using:
 
-`opam install . --deps-only`
+    opam install . --deps-only
 
 Then, run `dune build`. 
 
@@ -19,11 +19,20 @@ Simply supply the file name containing the CombinatorC program as a command line
 
 For example, on Windows:
 
-`combc-windows.exe input.txt`
+    combc-windows.exe input.txt
 
 Optionally, you can set the flag `--output-json` to output a JSON string representing the blueprint instead of a Factorio blueprint string. 
 
 The output blueprint will have the name of the input file.
+
+### Running on Mac 
+
+By default MacOS will block executables from unknown developers. To get around this, navigate to the install location and run the following commands:
+
+    xattr -d com.apple.quarantine combc-mac
+    chmod +x combc-mac
+
+Now, you should be able to run the compiler normally.
 
 ## Language 
 

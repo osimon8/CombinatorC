@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          - os: macOS-11
             release_name: combc-mac
           - os: ubuntu-latest
             release_name: combc-ubuntu
@@ -23,7 +23,7 @@ jobs:
         ocaml-compiler:
           - 4.13.x     
         os: 
-          - macos-latest
+          - macOS-11
           - ubuntu-latest
           - windows-latest
 
@@ -68,9 +68,6 @@ jobs:
 
       - name: Download artifacts
         uses: actions/download-artifact@v3
-
-      - name: Test - View working directory 
-        run: ls -R 
 
       - name: Publish 
         uses: softprops/action-gh-release@v1
