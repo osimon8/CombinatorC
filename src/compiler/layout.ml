@@ -113,7 +113,7 @@ let place_identity (grid:grid) (comb: combinator) : placement =
   center_of_size !p (size_of_combinator comb)
 
 let layout_identity ?pos:(pos=(0.,0.)) (c:circuit) : placement list = 
-  let _, combs, _, _ = c in 
+  let combs, _, _ = c in 
   let g = gen_grid () in 
   let f = place_identity g in 
   List.map f combs
@@ -127,7 +127,7 @@ let place_naive (grid:grid) (g:connection_graph) (comb: combinator) : placement 
   center_of_size p s
 
 let layout_naive ?pos:(pos=(0.,0.)) (c:circuit) : placement list = 
-  let _, combs, g, _ = c in 
+  let combs, g, _ = c in 
   let grid : grid = gen_grid () in 
 
   let internal (acc:placement list) (comb:combinator)  = 

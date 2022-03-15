@@ -33,7 +33,6 @@ let json_of_config (cfg:cfg) : string * json =
 
   let c_map (i:int) (data:data) =  
     let s, v = data in
-    (* let s : string = begin match s with Red s | Green s -> s end in *)
     `Assoc [("signal", json_of_symbol s); 
             ("count", `Int v); 
             ("index", `Int (i + 1))] in
@@ -57,13 +56,30 @@ let json_of_config (cfg:cfg) : string * json =
   | C cfg -> [("filters", `List (List.mapi c_map cfg))]
   end))
 
-let json_of_conn color id = 
-  fun (clist:connection list) : json ->  
-     `Assoc [(color, `List (List.map (fun c -> `Assoc [("entity_id", `Int (id_of_conn c));
-                                                        ("circuit_id", `Int (type_id_of_conn c))])
-      clist))]
+let json_of_conn = 
+  fun (clist:CG.edge list) : (string * json) list ->  
+    let red, green = List.partition (fun (_, color, _) -> 
+                                      begin match color with 
+                                      | Red -> true
+                                      | Green -> false 
+                                      end) clist in 
 
-let json_of_combinator (c: combinator) (wire: wire) (g: connection_graph) (p:placement) : json = 
+
+    let map_conns l = List.map (fun (_, _, c) -> `Assoc [("entity_id", `Int (id_of_conn c));
+                                                        ("circuit_id", `Int (type_id_of_conn c))]) l in 
+
+
+    let rl, gl = List.length red, List.length green in 
+    
+    begin match rl, gl with 
+    | 0, 0 ->  []
+    | _, 0 ->  [(string_of_wire_color Red, `List (map_conns red)) ] 
+    | 0, _ ->  [(string_of_wire_color Green, `List (map_conns green)) ] 
+    | _, _ ->  [(string_of_wire_color Red, `List (map_conns red));
+                     (string_of_wire_color Green, `List (map_conns green)) ] 
+    end 
+
+let json_of_combinator (c: combinator) (g: connection_graph) (p:placement) : json = 
   let id, name, cfg_json = begin match c with
  | Arithmetic (id, cfg) -> id, "arithmetic-combinator", [json_of_config (A cfg)]
  | Decider (id, cfg) ->  id, "decider-combinator", [json_of_config (D cfg)]
@@ -71,18 +87,18 @@ let json_of_combinator (c: combinator) (wire: wire) (g: connection_graph) (p:pla
  | Pole id -> id, "substation", [] (* small-electric-pole*)
   end in 
 
-  let color = begin match wire with 
-  | Red _ -> "red"
-  | Green _ -> "green"
-  end in
-
-  let joc = json_of_conn color id in
+  (* print_endline ("ID: " ^ string_of_int id); *)
+  let joc label clist = 
+    begin match json_of_conn clist with 
+    | [] -> [] 
+    | l -> [(label, `Assoc l)]
+  end in 
 
   let conns = [("connections", begin match c with 
- | Arithmetic _ -> `Assoc [("1", joc (succs g (Ain id))); ("2", joc (succs g (Aout id)))]
- | Decider _ ->  `Assoc [("1", joc (succs g (Din id))); ("2", joc (succs g (Dout id)))]
- | Constant _-> `Assoc [("1", joc (succs g (C id)))]
- | Pole _ -> `Assoc [("1", joc (succs g (P id)))]
+ | Arithmetic _ -> `Assoc (joc "1" (succs g (Ain id)) @ joc "2" (succs g (Aout id)))
+ | Decider _ ->  `Assoc (joc "1" (succs g (Din id)) @ joc "2" (succs g (Dout id)))
+ | Constant _-> `Assoc (joc "1" (succs g (C id)))
+ | Pole _ -> `Assoc (joc "1" (succs g (P id)))
   end 
   )] in 
 
@@ -93,9 +109,10 @@ let json_of_combinator (c: combinator) (wire: wire) (g: connection_graph) (p:pla
           ] @ cfg_json @ conns)
 
  let json_of_circuit (circuit: circuit) (placements:placement list) : json list = 
-  let wire, combs, g, _ = circuit in 
+  let combs, g, _ = circuit in 
+
   let zipped = List.combine combs placements in
-  let json_list = List.map (fun (c, p) -> json_of_combinator c wire g p) zipped in
+  let json_list = List.map (fun (c, p) -> json_of_combinator c g p) zipped in
   json_list
 
 let json_of_circuits (circuits: circuit list) : json list = 

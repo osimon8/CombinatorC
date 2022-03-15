@@ -1,8 +1,8 @@
 open Combinator
 
-type wire = 
- | Red of signal 
- | Green of signal
+type wire_color = 
+ | Red 
+ | Green
 
 type connection = 
   | Ain of id
@@ -19,7 +19,14 @@ module Node = struct
    let equal = (=)                                                                  
 end                                                                                 
 
-module CG = Graph.Imperative.Graph.Concrete(Node)
+module Edge = struct                                                                
+   type t = wire_color                                                                  
+   let compare = Stdlib.compare                                                 
+   let equal = (=)                                                                  
+   let default = Red                                                            
+end
+
+module CG = Graph.Imperative.Graph.ConcreteLabeled(Node)(Edge)
 module CG_ops = Graph.Oper.I(CG)
 
 type connection_graph = CG.t
@@ -27,7 +34,7 @@ type connection_graph = CG.t
 (* max_id, input sigs, output sigs, input ids, output ids*)
 type circuit_meta = id * (symbol list) * (symbol list) * (id list) * (id list) 
 
-type circuit = wire * combinator list * connection_graph * circuit_meta
+type circuit = combinator list * connection_graph * circuit_meta
 
 let id_of_conn conn = 
   begin match conn with 
@@ -60,10 +67,20 @@ let string_of_conn conn =
   | P id -> "(P " ^ string_of_int id ^ ")"
 end
 
+let string_of_wire_color (wc:wire_color) = 
+  begin match wc with 
+  | Red -> "red"
+  | Green -> "green"
+  end
+
+let string_of_edge e = 
+  let v1, c, v2 = e in 
+  string_of_conn v1 ^ " <-> " ^ string_of_conn v2 ^ " : " ^ string_of_wire_color c
+
 let print_edges (g:connection_graph) : unit = 
   print_endline("PRINTING GRAPH");
-  CG.iter_edges (fun v1 v2 -> print_endline (string_of_conn v1 ^ " <-> " ^ string_of_conn v2)) g;
+  CG.iter_edges_e (fun e-> print_endline (string_of_edge e)) g;
   print_endline("--------------------")
 
 let succs g id = 
-  if CG.mem_vertex g id then CG.succ g id else []
+  if CG.mem_vertex g id then CG.succ_e g id else []

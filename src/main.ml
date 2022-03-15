@@ -42,7 +42,7 @@ let () =
       let ast = if optimize_b then optimize_bexp ast else ast in 
       (* print_endline (string_of_bexp ast); *)
       let c = compile_bexp_to_circuit ~optimize ~i o_sig ast in
-      let _, _, _, m = c in 
+      let _, _, m = c in 
       let m_id, _, _, _, _ = m in 
       m_id + 1, c
   in

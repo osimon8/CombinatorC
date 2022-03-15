@@ -2,6 +2,7 @@ open Ast
 open Circuit
 open Combinator
 open Utils
+open Config
 
 let sig_list = 
   ["0"; "1"; "2"; "3"; "4"; "5"; "6"; "7"; "8"; "9"; 
@@ -34,6 +35,19 @@ let create_sig_ctr (vars:string list) =
     let v = ctr () in
     intern v
 
+let connect c g c1 c2 = 
+  CG.add_edge_e g (c1, c, c2)
+
+let connect_primary g c1 c2 = 
+  connect (get_primary ()) g c1 c2 
+
+let connect_secondary g c1 c2 = 
+  connect (get_secondary ()) g c1 c2 
+
+let connect_rand g c1 c2 = 
+  let f = if Random.bool() then connect_primary else connect_secondary in 
+  f g c1 c2
+
 let circuit_of_bexp i (output_sig:symbol) (b: bexp) : circuit = 
   let vars = vars_in_bexp b in 
   let sigs = output_sig :: vars in
@@ -44,7 +58,7 @@ let circuit_of_bexp i (output_sig:symbol) (b: bexp) : circuit =
   let g = CG.create () in 
 
   let connect c1 c2 = 
-    if id_of_conn c1 <> -1 && id_of_conn c2 <> -1 then CG.add_edge g c1 c2 in  
+    if id_of_conn c1 <> -1 && id_of_conn c2 <> -1 then connect_primary g c1 c2 in
 
   let rec cb b = 
     let a_binop b1 b2 aop = 
@@ -159,7 +173,7 @@ let circuit_of_bexp i (output_sig:symbol) (b: bexp) : circuit =
 
   let m_id = List.fold_left (fun acc c -> max acc (id_of_combinator c)) (-1) combs in
 
- (Red [], combs, g, (m_id, vars, [o_sig], iids, [oid]))
+ (combs, g, (m_id, vars, [o_sig], iids, [oid]))
 
 let lookup (id:id) (combs:combinator list) : combinator =
   List.find (fun c -> id_of_combinator c = id) combs 
@@ -181,7 +195,7 @@ let o_conn_of_id (id:id) (combs: combinator list) : connection =
   end
 
 let wrap_io (ctr: unit -> value) (circuit:circuit) : circuit = 
-  let wire, combs, g, meta = circuit in
+  let combs, g, meta = circuit in
   let m_id, i_sigs, o_sigs, input, output = meta in 
 
   let entity_ctr = create_ctr ~i:(m_id + 1) () in 
@@ -190,7 +204,7 @@ let wrap_io (ctr: unit -> value) (circuit:circuit) : circuit =
   let inp_id = entity_ctr () in
   let i_pole = Pole (inp_id) in 
 
-  let wire_input conn = CG.add_edge g (P inp_id) conn in
+  let wire_input conn = connect_primary g (P inp_id) conn in
   let wire_in i = wire_input (i_conn_of_id i combs) in
 
   let inp = if has_input then 
@@ -202,7 +216,7 @@ let wrap_io (ctr: unit -> value) (circuit:circuit) : circuit =
   let oid = entity_ctr () in 
   let o_pole = Pole (oid) in
 
-  let wire_out i = CG.add_edge g (o_conn_of_id i combs) (P oid) in
+  let wire_out i = connect_primary g (o_conn_of_id i combs) (P oid) in
 
   List.iter wire_in input;
   List.iter wire_out output;
@@ -210,13 +224,13 @@ let wrap_io (ctr: unit -> value) (circuit:circuit) : circuit =
   let new_combs = o_pole :: inp @ combs in
   let iids = List.map id_of_combinator inp in 
 
-  (wire, new_combs, g, (entity_ctr () - 1, i_sigs, o_sigs, iids, [oid]))
+  (new_combs, g, (entity_ctr () - 1, i_sigs, o_sigs, iids, [oid]))
 
 (* basic optimization that optimizes from the structure of the bexp compiler
   essentially just removes redundant constant combinators. Doesn't update meta 
 *)
 let rec primitive_optimization (circuit:circuit) : circuit = 
-  let wire, combs, g, meta = circuit in 
+  let combs, g, meta = circuit in 
   let _, i_sigs, _, _, _ = meta in
 
   let (~$) c = id_of_conn c in
@@ -257,11 +271,11 @@ let rec primitive_optimization (circuit:circuit) : circuit =
                      
   List.iter (CG.remove_edge_e g) delete_edges;
   List.iter (CG.add_edge_e g) new_edges;
-  (wire, u_combs @ new_combs, g, meta)
+  (u_combs @ new_combs, g, meta)
 
 (* Remap ids after combinators have been deleted through optimization passes *)
 let remap_ids (ctr: unit -> value) (circuit:circuit) : circuit = 
-  let wire, combs, g, meta = circuit in 
+  let combs, g, meta = circuit in 
   let _, i_sigs, o_sigs, input, output = meta in
   let id_map = List.map (fun c -> let i = ctr() in id_of_combinator c, i) combs in 
 
@@ -282,7 +296,7 @@ let remap_ids (ctr: unit -> value) (circuit:circuit) : circuit =
     | P i -> P id
     end in
 
-  CG.iter_edges (fun c1 c2 -> CG.add_edge new_g (remap_conn c1) (remap_conn c2)) g;
+  CG.iter_edges_e (fun (c1, c, c2) -> connect c new_g (remap_conn c1) (remap_conn c2)) g;
   let new_combs = List.map (fun c -> let i = ~$$c in begin match c with 
                                         | Arithmetic (_, cfg) -> Arithmetic (i, cfg)
                                         | Decider (_, cfg) -> Decider (i, cfg)
@@ -294,13 +308,13 @@ let remap_ids (ctr: unit -> value) (circuit:circuit) : circuit =
   let new_input = List.map (~!) input in 
   let new_output = List.map (~!) output in 
 
-  (wire, new_combs, new_g, (m_id, i_sigs, o_sigs, new_input, new_output))
+  (new_combs, new_g, (m_id, i_sigs, o_sigs, new_input, new_output))
 
 let circuit_concat (c1:circuit) (c2:circuit) : circuit = 
-  let wire, combs1, g1, meta = c1 in 
+  let combs1, g1, meta = c1 in 
   let m1, i_sigs2, o_sigs1, input1, output1 = meta in
 
-  let _, combs2, g2, meta = c1 in 
+  let combs2, g2, meta = c1 in 
   let m2, i_sigs1, o_sigs2, input2, output2 = meta in
 
   let new_g = CG_ops.union g1 g2 in 
@@ -320,6 +334,6 @@ let circuit_concat (c1:circuit) (c2:circuit) : circuit =
   let input = input1 in 
   let output = output2 in 
 
-  (wire, combs1 @ combs2, new_g, (m, i_sigs, o_sigs, input, output))
+  (combs1 @ combs2, new_g, (m, i_sigs, o_sigs, input, output))
 
 
