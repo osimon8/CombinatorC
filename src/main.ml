@@ -5,7 +5,7 @@ open Encode
 open Compiler.Compile
 open Compiler.Config
 
-let optimize = true
+let optimize = false
 
 (* WARNING: If this is set to false, some expressions 
   using comparison operations may not compile *)

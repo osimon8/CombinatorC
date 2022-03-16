@@ -40,7 +40,6 @@ rule token = parse
   | num    { LIT (int_of_string (lexeme lexbuf)) }
   | circuit_bind { CIRCUIT_BIND }
   | directive   { DIRECTIVE }
-  | single_case_word  { WORD (lexeme lexbuf) }
   | '+'         { PLUS }
   | '-'         { MINUS }
   | '*'         { MUL }
@@ -67,4 +66,11 @@ rule token = parse
   | "false"     { LIT 0 }
   | ';'         { SEMI }
   | '='         { ASSIGN }
+  | "if"        { IF } 
+  | "then"      { THEN }
+  | "else"      { ELSE }
+  (* | '?'         { QUESTION }
+  | ':'         { COLON } *)
+  | "??"        { COALESCE }
+  | single_case_word  { WORD (lexeme lexbuf) }
   | _ as c      { unexpected_char lexbuf c }

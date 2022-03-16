@@ -1,5 +1,5 @@
 (library
  (name compiler)
   (modules circuit combinator optimize compile directive layout config)
- (libraries yojson ocamlgraph ast utils)
+ (libraries core_kernel yojson ocamlgraph ast utils)
 )

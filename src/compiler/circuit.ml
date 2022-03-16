@@ -28,6 +28,7 @@ end
 
 module CG = Graph.Imperative.Graph.ConcreteLabeled(Node)(Edge)
 module CG_ops = Graph.Oper.I(CG)
+module CG_traverse = Graph.Traverse.Bfs(CG)
 
 type connection_graph = CG.t
 
@@ -36,7 +37,9 @@ type circuit_meta = id * (symbol list) * (symbol list) * (id list) * (id list)
 
 type circuit = combinator list * connection_graph * circuit_meta
 
-let id_of_conn conn = 
+(* input pole id, output pole id, circuit *)
+(* type wrapped_circuit = id * id * circuit  *)
+let id_of_conn conn : id = 
   begin match conn with 
   | Ain id
   | Aout id
@@ -46,6 +49,15 @@ let id_of_conn conn =
   | P id -> id
 end
 
+let opposite_conn conn : connection = 
+  begin match conn with 
+  | Ain id -> Aout id
+  | Aout id -> Ain id 
+  | Din id -> Dout id 
+  | Dout id -> Din id
+  | C _ 
+  | P _ -> conn
+end
 (* id used by Factorio in circuit id in JSON representation *)
 let type_id_of_conn conn = 
   begin match conn with 

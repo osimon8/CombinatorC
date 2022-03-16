@@ -87,6 +87,36 @@ let id_of_combinator (comb:combinator) : id =
   | Pole id -> id
   end
 
+(* let input_signals_of_combinator (comb:combinator) : op list = 
+  begin match comb with 
+  | Arithmetic (_, ((o1, _, o2, _))) -> [o1; o2]
+  | _ -> []
+  end *)
+
+let uses_signal (comb:combinator) (s:symbol) : bool =
+  let aop_uses (aop:aop) = 
+    begin match aop with 
+    | Symbol s1 -> s1 = s 
+    | Const _ -> false 
+    | Each -> true 
+    end in
+
+  let dop_uses dop inn t = 
+    begin match dop with 
+    | Symbol s1 -> (inn || (match t with | InpCount -> true | One -> false)) && s1 = s 
+    | Const _ -> false
+    | Anything
+    | Everything 
+    | Each -> true 
+    end in 
+
+  begin match comb with 
+  | Arithmetic (id, (op1, _, op2, op3)) -> aop_uses op1 || aop_uses op2
+  | Decider (id, (op1, _, op2, op3, t)) -> dop_uses op1 true t || dop_uses op2 true t || dop_uses op3 false t
+  | Constant (_, sigs) -> List.mem s (List.map fst sigs)  
+  | Pole _ -> false 
+  end 
+
 let replace_signal_A (comb:arithmetic_combinator) (s:symbol) (v:value) : arithmetic_combinator =
   let r2 (comb:arithmetic_combinator) s v : arithmetic_combinator =
     let id, ((o1, op, o2, out)) = comb in 

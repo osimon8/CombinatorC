@@ -34,6 +34,14 @@ open Compiler.Directive;;
 %token ASSIGN
 %token SEMI
 
+%token IF 
+%token THEN 
+%token ELSE
+
+// %token QUESTION 
+// %token COLON
+%token COALESCE
+
 %token DIRECTIVE
 %token <string> WORD
 
@@ -126,11 +134,16 @@ b9:
 b10: 
   | MINUS b=b10        { Neg(b) }
   | NOT b=b10          { Not(b) }
-  | b=b11              { b }
+  | b=b_coalesce        { b }
+
+b_coalesce:
+  | b1=b_coalesce COALESCE b2=b11           { Conditional(b1, b1, b2) }
+  | b=b11                                   { b }
 
 b11: 
-  | LPAREN b=bexp RPAREN  { b }
-  | b=b12                 { b }
+  | LPAREN b=bexp RPAREN                     { b }
+  | IF g=bexp THEN b1=b11 ELSE b2=b11        { Conditional(g, b1, b2) }
+  | b=b12                                    { b }
 
 b12:
   | l=LIT   { Lit l }

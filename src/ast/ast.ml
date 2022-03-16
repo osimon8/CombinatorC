@@ -25,6 +25,7 @@ type bexp =
   | NAND of bexp * bexp
   | NOR of bexp * bexp
   | BOOL of bexp
+  | Conditional of bexp * bexp * bexp 
 
 type assignment = string * bexp
 
@@ -57,6 +58,7 @@ let vars_in_bexp (b:bexp) : string list =
     | LOR (b1, b2)
     | NAND (b1, b2)
     | NOR (b1, b2) -> intern b1 @ intern b2
+    | Conditional(b1, b2, b3) ->  intern b1 @ intern b2 @ intern b3
     end in
   (Core_kernel.List.stable_dedup (intern b))
 
@@ -143,10 +145,19 @@ let optimize_bexp (b:bexp) : bexp =
     | LOR (LAND (b1, b2), b3) -> LOR (Mul (o b1, o b2), o b3) 
     | NAND (LAND (b1, b2), b3) -> NAND (Mul (o b1, o b2), o b3) 
     | NOR (LAND (b1, b2), b3) -> NOR (Mul (o b1, o b2), o b3) 
+    | Conditional (LAND (b1, b2), b3, b4) -> Conditional (Mul (o b1, o b2), o b3, o b4)
+    
+    | LAND (LOR (b1, b2), b3) -> LAND (OR (o b1, o b2), o b3) 
+    | LOR (LOR (b1, b2), b3) -> LOR (OR (o b1, o b2), o b3) 
+    | NAND (LOR (b1, b2), b3) -> NAND (OR (o b1, o b2), o b3) 
+    | NOR (LOR (b1, b2), b3) -> NOR (OR (o b1, o b2), o b3) 
+    | Conditional (LOR (b1, b2), b3, b4) -> Conditional (OR (o b1, o b2), o b3, o b4)
+
     | Not LAND (b1, b2) -> NAND (o b1, o b2) 
     | Not LOR (b1, b2) -> NOR (o b1, o b2) 
     | Not NAND (b1, b2) -> LAND (o b1, o b2) 
     | Not NOR (b1, b2) -> LOR (o b1, o b2) 
+
     (* demorgan *)
     | LAND (Not b1, Not b2) -> NOR (o b1, o b2) 
     | LOR (Not b1, Not b2) -> NAND (o b1, o b2) 
@@ -184,6 +195,11 @@ let optimize_bexp (b:bexp) : bexp =
     | BOOL Not b 
     | Not BOOL b -> Not b
     
+    | Conditional (Lit l, b1, b2) -> if l <> 0 then o b1 else o b2
+    | Conditional (BOOL b1, b2, b3) -> Conditional (o b1, o b2, o b3)
+    | Conditional (Not b1, b2, b3) -> Conditional (o b1, o b3, o b2)
+
+
     | Plus (b1, b2) -> Plus (o b1, o b2)
     | Minus (b1, b2) -> Minus (o b1, o b2)
     | Div (b1, b2) -> Div (o b1, o b2)
@@ -208,6 +224,7 @@ let optimize_bexp (b:bexp) : bexp =
     | NOR (b1, b2) -> NOR (o b1, o b2)
     | Not b -> Not (o b)
     | BOOL b -> BOOL (o b)
+    | Conditional (b1, b2, b3) -> Conditional (o b1, o b2, o b3)
     | Lit _
     | Var _ -> b
     end in 
@@ -249,6 +266,9 @@ let string_of_bexp (b : bexp) : string =
         | LOR (b1, b2) -> bin b1 b2 "||"
         | NAND (b1, b2) -> sobi first (Not (LAND (b1, b2))) 
         | NOR (b1, b2) -> sobi first (Not (LOR (b1, b2))) 
+        | Conditional (b1, b2, b3) -> 
+          let s = "if " ^ sob b1 ^ " then " ^ sob b2 ^ " else " ^ sob b3 in 
+          if first then s else "(" ^ s ^ ")"
       end
   in
   sobi true b
