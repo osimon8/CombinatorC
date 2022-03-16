@@ -135,7 +135,7 @@ let circuit_of_bexp i (output_sig:symbol) (b: bexp) : circuit =
       connect (o1 @ o2) [Ain id1];
       connect [Aout id1] [Din id2];
       c1 @ c2 @ [ Arithmetic (id1, (Symbol s1, aop, Symbol s2, Symbol t_sig) );
-                  Decider (id2, (Symbol t_sig, dop, Const 0, Symbol o_sig, One)) ]
+                  Decider (id2, (Symbol t_sig, dop, Const 0l, Symbol o_sig, One)) ]
       , Some iids, [Dout id2], o_sig
     in
 
@@ -144,7 +144,7 @@ let circuit_of_bexp i (output_sig:symbol) (b: bexp) : circuit =
       let id = entity_ctr () in 
       let iids = unary_iid_map id iids in 
       connect o [Din id];
-      c @ [ Decider (id, (Symbol s, dop, Const 0, Symbol o_sig, dtype)) ], Some iids, [Dout id], o_sig
+      c @ [ Decider (id, (Symbol s, dop, Const 0l, Symbol o_sig, dtype)) ], Some iids, [Dout id], o_sig
     in      
 
     let conditional b1 b2 b3 = 
@@ -159,8 +159,8 @@ let circuit_of_bexp i (output_sig:symbol) (b: bexp) : circuit =
       let niids1 = bin_iid_map id1 iids1 iids2 in 
       let niids2 = bin_iid_map id2 iids1 iids3 in 
 
-      let combs = [Decider (id1, (Symbol guard, Neq, Const 0, Symbol o_sig, InpCount)); 
-                   Decider (id2, (Symbol guard, Eq, Const 0, Symbol o_sig, InpCount))] in 
+      let combs = [Decider (id1, (Symbol guard, Neq, Const 0l, Symbol o_sig, InpCount)); 
+                   Decider (id2, (Symbol guard, Eq, Const 0l, Symbol o_sig, InpCount))] in 
       c1 @ c2 @ c3 @ combs, Some (niids1 @ niids2), [Dout id1; Dout id2], o_sig
     in
 
@@ -168,7 +168,7 @@ let circuit_of_bexp i (output_sig:symbol) (b: bexp) : circuit =
     | Var v -> 
       if v <> o_sig then 
         let id = entity_ctr () in 
-        let combs = [Arithmetic (id, (Symbol v, Add, Const 0, Symbol o_sig))] in 
+        let combs = [Arithmetic (id, (Symbol v, Add, Const 0l, Symbol o_sig))] in 
         combs, Some [id], [Aout id], o_sig
       else 
       [], None, [], o_sig (* IO wrapping will handle, do nothing.
@@ -181,7 +181,7 @@ let circuit_of_bexp i (output_sig:symbol) (b: bexp) : circuit =
               let id = entity_ctr () in 
               let iids = unary_iid_map id iids in 
               connect o [Ain id];
-              c @ [ Arithmetic (id, (Symbol s, Mul, Const (-1), Symbol o_sig)) ], Some iids, [Aout id], o_sig
+              c @ [ Arithmetic (id, (Symbol s, Mul, Const (-1l), Symbol o_sig)) ], Some iids, [Aout id], o_sig
     | Conditional (b1, b2, b3) -> conditional b1 b2 b3
     | Not b -> isolate b Eq One
     | BOOL b -> isolate b Neq One
@@ -319,7 +319,7 @@ let rec calculate_signals_on_wire (c:circuit) (color:wire_color) (conn:connectio
   let s = CG_traverse.fold_component intern [] g conn in 
   Core_kernel.List.stable_dedup s 
 
-let rec input_signal_isolation (ctr: unit -> value) (inp_id:id) (circuit: circuit) : circuit = 
+let rec input_signal_isolation (ctr: unit -> int) (inp_id:id) (circuit: circuit) : circuit = 
   let combs, g, meta = circuit in  
   let mid, i_sigs, o_sigs, iids, oids = meta in
   let internal acc id = 
@@ -339,7 +339,7 @@ let rec input_signal_isolation (ctr: unit -> value) (inp_id:id) (circuit: circui
   (combs, g, (mid, i_sigs, o_sigs, iids, oids))
 
 
-let wrap_io (ctr: unit -> value) (circuit:circuit) : circuit = 
+let wrap_io (ctr: unit -> int) (circuit:circuit) : circuit = 
   let combs, g, meta = circuit in
   let m_id, i_sigs, o_sigs, input, output = meta in 
 
@@ -355,7 +355,7 @@ let wrap_io (ctr: unit -> value) (circuit:circuit) : circuit =
   let inp = if has_input then 
             let id = entity_ctr () in
             (wire_input (C id);
-            [i_pole; Constant (id, List.map (fun v -> v, 1) i_sigs)]) 
+            [i_pole; Constant (id, List.map (fun v -> v, 1l) i_sigs)]) 
             else [i_pole] in
 
   let oid = entity_ctr () in 
@@ -420,7 +420,7 @@ let rec primitive_optimization (circuit:circuit) : circuit =
   (u_combs @ new_combs, g, meta)
 
 (* Remap ids after combinators have been deleted through optimization passes *)
-let remap_ids (ctr: unit -> value) (circuit:circuit) : circuit = 
+let remap_ids (ctr: unit -> int) (circuit:circuit) : circuit = 
   let combs, g, meta = circuit in 
   let _, i_sigs, o_sigs, input, output = meta in
   let id_map = List.map (fun c -> let i = ctr() in id_of_combinator c, i) combs in 

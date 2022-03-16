@@ -1,6 +1,6 @@
 type bexp =
   | Var of string
-  | Lit of int
+  | Lit of int32
   | Plus of bexp * bexp
   | Minus of bexp * bexp
   | Mul of bexp * bexp
@@ -28,6 +28,13 @@ type bexp =
   | Conditional of bexp * bexp * bexp 
 
 type assignment = string * bexp
+
+let rec pow base i = 
+  begin match i with
+  | 0l -> 1l
+  | 1l -> base
+  | n -> Int32.mul n (pow base (Int32.sub i 1l))
+  end
 
 let vars_in_bexp (b:bexp) : string list = 
   let rec intern b =  
@@ -64,55 +71,73 @@ let vars_in_bexp (b:bexp) : string list =
 
 
 let optimize_bexp (b:bexp) : bexp = 
-  let passes = 3 in 
+  let passes = 10 in 
 
   (* TODO: refactor bexp def so this isn't so disgusting *)
   let rec o b =  
-    begin match b with 
-    | Plus (Lit 0, b)
-    | Plus (b, Lit 0)
-    | Mul (Lit 1, b)
-    | Mul (b, Lit 1)
-    | Div (b, Lit 1)
-    | Lshift (b, Lit 0)
-    | Rshift (b, Lit 0)
-    | OR (b, Lit 0)
-    | OR (Lit 0, b)
-    | XOR (b, Lit 0)
-    | XOR (Lit 0, b)
+    begin match b with
+    (* Literal interpretation *)
+    | Plus (Lit l1, Lit l2) -> Lit (Int32.add l1 l2) 
+    | Minus (Lit l1, Lit l2) -> Lit (Int32.sub l1 l2) 
+    | Div (Lit l1, Lit l2) -> Lit (Int32.div l1 l2) 
+    | Mul (Lit l1, Lit l2) -> Lit (Int32.mul l1 l2) 
+    | Exp (Lit l1, Lit l2) -> Lit (pow l1 l2) 
+    | Mod (Lit l1, Lit l2) -> Lit (Int32.rem l1 l2) 
+    | OR (Lit l1, Lit l2) -> Lit (Int32.logor l1 l2) 
+    | AND (Lit l1, Lit l2) -> Lit (Int32.logand l1 l2) 
+    | XOR (Lit l1, Lit l2) -> Lit (Int32.logxor l1 l2) 
+    | Lshift (Lit l1, Lit l2) -> Lit (Int32.shift_left l1 (Int32.to_int l2)) 
+    | Rshift (Lit l1, Lit l2) -> Lit (Int32.shift_right l1 (Int32.to_int l2)) 
+
+    | Plus (Lit 0l, b)
+    | Plus (b, Lit 0l)
+    | Mul (Lit 1l, b)
+    | Mul (b, Lit 1l)
+    | Div (b, Lit 1l)
+    | Lshift (b, Lit 0l)
+    | Rshift (b, Lit 0l)
+    | OR (b, Lit 0l)
+    | OR (Lit 0l, b)
+    | XOR (b, Lit 0l)
+    | XOR (Lit 0l, b)
     | Neg (Neg b) -> o b
 
-    | Mul (_, Lit 0)
-    | Mul (Lit 0, _)
-    | AND (_, Lit 0)
-    | AND (Lit 0, _) -> Lit 0
+    | Mul (_, Lit 0l)
+    | Mul (Lit 0l, _)
+    | AND (_, Lit 0l)
+    | AND (Lit 0l, _) -> Lit 0l
 
-    | Exp (_, Lit 0) -> Lit 1
+    (* Division by 0 in Factorio returns 0 *)
+    | Div (_, Lit 0l)
+    | Mod (_, Lit 0l) -> Lit 0l
 
-    | Mul (Lit -1, b)
-    | Mul (b, Lit -1)
-    | Div (b, Lit -1) -> Neg (o b)
+    (* Exponentiation by negative in Factorio returns 0 *)
+    | Exp (b, Lit l) -> if l = 0l then Lit 1l else if l < 0l then Lit 0l else Exp(o b, Lit l)
 
-    | Mul (b1, Exp (Lit 2, b2)) 
-    | Mul (Exp (Lit 2, b2), b1) -> Lshift (o b1, o b2) 
+    | Mul (Lit -1l, b)
+    | Mul (b, Lit -1l)
+    | Div (b, Lit -1l) -> Neg (o b)
 
-    | Div (b1, Exp (Lit 2, b2)) -> Rshift (o b1, o b2) 
+    | Mul (b1, Exp (Lit 2l, b2)) 
+    | Mul (Exp (Lit 2l, b2), b1) -> Lshift (o b1, o b2) 
 
-    | Plus (b, Lit l) -> if l < 0 then Minus (o b, Lit (l * -1)) else Plus (o b, Lit l)
+    | Div (b1, Exp (Lit 2l, b2)) -> Rshift (o b1, o b2) 
+
+    | Plus (b, Lit l) -> if l < 0l then Minus (o b, Lit (Int32.neg l)) else Plus (o b, Lit l)
     | Plus (b1, Neg b2) -> Minus (o b1, o b2)
 
-    | Minus (b, Lit l) -> if l < 0 then Plus (o b, Lit (l * -1)) else Minus (o b, Lit l)
+    | Minus (b, Lit l) -> if l < 0l then Plus (o b, Lit (Int32.neg l)) else Minus (o b, Lit l)
     | Minus (b1, Neg b2) -> Plus (o b1, o b2)
 
     | Mul (Neg b1, Neg b2) -> Mul (o b1, o b2)
 
     (* BEGIN SECTION N - NECESSARY FOR PROPER COMPILATION *)
-    | Gt (Lit l1, Lit l2) -> if l1 > l2 then Lit 1 else Lit 0
-    | Lt (Lit l1, Lit l2) -> if l1 < l2 then Lit 1 else Lit 0
-    | Gte (Lit l1, Lit l2) -> if l1 >= l2 then Lit 1 else Lit 0
-    | Lte (Lit l1, Lit l2) -> if l1 <= l2 then Lit 1 else Lit 0
-    | Eq (Lit l1, Lit l2) -> if l1 == l2 then Lit 1 else Lit 0
-    | Neq (Lit l1, Lit l2) -> if l1 <> l2 then Lit 1 else Lit 0
+    | Gt (Lit l1, Lit l2) -> if l1 > l2 then Lit 1l else Lit 0l
+    | Lt (Lit l1, Lit l2) -> if l1 < l2 then Lit 1l else Lit 0l
+    | Gte (Lit l1, Lit l2) -> if l1 >= l2 then Lit 1l else Lit 0l
+    | Lte (Lit l1, Lit l2) -> if l1 <= l2 then Lit 1l else Lit 0l
+    | Eq (Lit l1, Lit l2) -> if l1 == l2 then Lit 1l else Lit 0l
+    | Neq (Lit l1, Lit l2) -> if l1 <> l2 then Lit 1l else Lit 0l
     
     | Gt (Lit l1, b) -> Lte (o b, Lit l1)
     | Lt (Lit l1, b) -> Gte (o b, Lit l1)
@@ -121,8 +146,8 @@ let optimize_bexp (b:bexp) : bexp =
     | Eq (Lit l1, b) -> Eq (o b, Lit l1)
     | Neq (Lit l1, b) -> Neq (o b, Lit l1)
 
-    | LAND (Lit l1, Lit l2) -> if l1 <> 0 && l2 <> 0 then Lit 1 else Lit 0
-    | LOR (Lit l1, Lit l2) -> if l1 <> 0 || l2 <> 0 then Lit 1 else Lit 0
+    | LAND (Lit l1, Lit l2) -> if l1 <> 0l && l2 <> 0l then Lit 1l else Lit 0l
+    | LOR (Lit l1, Lit l2) -> if l1 <> 0l || l2 <> 0l then Lit 1l else Lit 0l
     (* END SECTION N*)
 
     | Not Gt (b1, b2) -> Lte (o b1, o b2)
@@ -132,13 +157,13 @@ let optimize_bexp (b:bexp) : bexp =
     | Not Eq (b1, b2) -> Neq (o b1, o b2)
     | Not Neq (b1, b2) -> Eq (o b1, o b2)
 
-    | Not Lit l -> if l = 0 then Lit 1 else Lit 0 
+    | Not Lit l -> if l = 0l then Lit 1l else Lit 0l 
     | Not Not Not b -> Not (o b)
     | Not Not b -> BOOL (o b)
 
     (* Nots and BOOLS can be optimized away, prefer them *)
-    | Eq (b, Lit 0) -> Not (o b)
-    | Eq (b, Lit 1) -> BOOL (o b)
+    | Eq (b, Lit 0l) -> Not (o b)
+    | Eq (b, Lit 1l) -> BOOL (o b)
 
     (* LAND ands LORS take 2 combinators each, minimize their usage when possible *)
     | LAND (LAND (b1, b2), b3) -> LAND (Mul (o b1, o b2), o b3) 
@@ -163,17 +188,17 @@ let optimize_bexp (b:bexp) : bexp =
     | LOR (Not b1, Not b2) -> NAND (o b1, o b2) 
 
     | LOR (b, Lit l) 
-    | LOR (Lit l, b) -> if l <> 0 then Lit 1 else BOOL (o b)
+    | LOR (Lit l, b) -> if l <> 0l then Lit 1l else BOOL (o b)
 
     | LAND (b, Lit l) 
-    | LAND (Lit l, b) -> if l = 0 then Lit 0 else BOOL (o b)
+    | LAND (Lit l, b) -> if l = 0l then Lit 0l else BOOL (o b)
 
     (* advanced demorgan *)
     | NOR (b, Lit l) 
-    | NOR (Lit l, b) -> if l <> 0 then Lit 0 else Not (o b)
+    | NOR (Lit l, b) -> if l <> 0l then Lit 0l else Not (o b)
 
     | NAND (b, Lit l) 
-    | NAND (Lit l, b) -> if l = 0 then Lit 1 else Not (o b)
+    | NAND (Lit l, b) -> if l = 0l then Lit 1l else Not (o b)
 
     | LAND (BOOL b1, b2)
     | LAND (b2, BOOL b1) -> LAND (o b1, o b2)
@@ -195,10 +220,13 @@ let optimize_bexp (b:bexp) : bexp =
     | BOOL Not b 
     | Not BOOL b -> Not b
     
-    | Conditional (Lit l, b1, b2) -> if l <> 0 then o b1 else o b2
+    | Conditional (Lit l, b1, b2) -> if l <> 0l then o b1 else o b2
     | Conditional (BOOL b1, b2, b3) -> Conditional (o b1, o b2, o b3)
     | Conditional (Not b1, b2, b3) -> Conditional (o b1, o b3, o b2)
-
+    (* If guard is true (1), then we can just multiply first branch, if its false this yields 0 
+      Better than a conditional, 2 combinators instead of 3 *)
+    | Conditional (g, b2, Lit 0l) -> Mul (BOOL (o g), o b2)
+    | Conditional (g, Lit 0l, b2) -> Mul (Not (o g), o b2)
 
     | Plus (b1, b2) -> Plus (o b1, o b2)
     | Minus (b1, b2) -> Minus (o b1, o b2)
@@ -241,7 +269,7 @@ let string_of_bexp (b : bexp) : string =
     begin
         match b with
         | Var s -> s
-        | Lit l -> string_of_int l
+        | Lit l -> Int32.to_string l
         | Neg b -> "-" ^ sob b
         | Not b -> "!" ^ sob b 
         | BOOL b -> "(bool) " ^ sob b

@@ -9,7 +9,7 @@ let json_output name entities =
         ]  
     )]
 
-let to_json_string js = Yojson.Basic.pretty_to_string js
+let to_json_string js = Yojson.Safe.pretty_to_string js
 
 let bigstring_of_string (src: string): Zlib.bigstring =
   let len = String.length src in

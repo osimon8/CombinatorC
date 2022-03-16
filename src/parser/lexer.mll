@@ -37,7 +37,7 @@ rule token = parse
   | comment     
   | whitespace+ { token lexbuf }  (* skip whitespace *)
   | signal { VAR (lexeme lexbuf) }
-  | num    { LIT (int_of_string (lexeme lexbuf)) }
+  | num    { LIT (Int32.of_string (lexeme lexbuf)) }
   | circuit_bind { CIRCUIT_BIND }
   | directive   { DIRECTIVE }
   | '+'         { PLUS }
@@ -62,8 +62,8 @@ rule token = parse
   | '!'         { NOT }
   | "||"        { LOR }
   | "&&"        { LAND }
-  | "true"      { LIT 1 }
-  | "false"     { LIT 0 }
+  | "true"      { LIT 1l }
+  | "false"     { LIT 0l }
   | ';'         { SEMI }
   | '='         { ASSIGN }
   | "if"        { IF } 
@@ -72,5 +72,7 @@ rule token = parse
   (* | '?'         { QUESTION }
   | ':'         { COLON } *)
   | "??"        { COALESCE }
+  | "==="       { LEQ }
+  | "!=="       { LNEQ }
   | single_case_word  { WORD (lexeme lexbuf) }
   | _ as c      { unexpected_char lexbuf c }

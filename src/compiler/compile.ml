@@ -9,13 +9,16 @@ open Directive
 let json_of_symbol s = 
   `Assoc [("type", `String "virtual"); ("name", `String ("signal-" ^ s))]
 
+let json_of_value v =
+  `Intlit (Int32.to_string v)
+
 let json_of_config (cfg:cfg) : string * json = 
   let mk_sig pre s = (pre ^ "_signal", json_of_symbol s) in
 
   let parse_ao (pre:string) (o:aop) = 
     begin match o with 
     | Symbol s -> mk_sig pre s
-    | Const c -> (pre ^ "_constant", `Int c)
+    | Const c -> (pre ^ "_constant", json_of_value c)
     | Each -> mk_sig pre "each"
     end 
   in 
@@ -23,7 +26,7 @@ let json_of_config (cfg:cfg) : string * json =
   let parse_do (pre:string) (o:dop) i = 
     begin match o with 
     | Const c -> if i <> 1 then failwith "illegal argument to decider combinator"
-                else ("constant", `Int c)
+                else ("constant", json_of_value c)
     | Symbol s -> mk_sig pre s
     | Each -> mk_sig pre "each"
     | Anything -> mk_sig pre "anything"
@@ -34,7 +37,7 @@ let json_of_config (cfg:cfg) : string * json =
   let c_map (i:int) (data:data) =  
     let s, v = data in
     `Assoc [("signal", json_of_symbol s); 
-            ("count", `Int v); 
+            ("count", json_of_value v); 
             ("index", `Int (i + 1))] in
 
   ("control_behavior", `Assoc (
@@ -87,7 +90,6 @@ let json_of_combinator (c: combinator) (g: connection_graph) (p:placement) : jso
  | Pole id -> id, "substation", [] (* small-electric-pole*)
   end in 
 
-  (* print_endline ("ID: " ^ string_of_int id); *)
   let joc label clist = 
     begin match json_of_conn clist with 
     | [] -> [] 
@@ -124,7 +126,6 @@ let compile_bexp_to_circuit ?optimize:(optimize=true) ?i:(i=1) (o_sig:symbol) (b
   let circuit = circuit_of_bexp i o_sig b in 
   let ctr = create_ctr ~i () in
     if optimize then 
-      (* List.iter (fun (_, _, g, _) -> print_edges g) circuits; *)
       let circuit_opt = primitive_optimization circuit in
       let circuit_opt = remap_ids ctr circuit_opt in
       wrap_io ctr circuit_opt 

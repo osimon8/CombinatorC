@@ -2,7 +2,7 @@ type symbol = string
 
 type id = int
 
-type value = int
+type value = int32
 
 type data = symbol * value
 
@@ -37,12 +37,12 @@ type decider_output_type =
 
 type aop = 
  | Symbol of string
- | Const of int
+ | Const of value
  | Each
 
  type dop = 
  | Symbol of string
- | Const of int
+ | Const of value
  | Each
  | Anything
  | Everything

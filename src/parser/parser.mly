@@ -26,6 +26,8 @@ open Compiler.Directive;;
 %token NOT
 %token LOR
 %token LAND
+%token LEQ
+%token LNEQ
 
 %token LPAREN
 %token RPAREN
@@ -46,7 +48,7 @@ open Compiler.Directive;;
 %token <string> WORD
 
 %token <string> VAR
-%token <int> LIT
+%token <int32> LIT
 
 %start toplevel
 
@@ -102,6 +104,8 @@ b3:
 b4:
   | l=b4 EQ r=b5       { Eq(l, r) }
   | l=b4 NEQ r=b5      { Neq(l, r) }
+  | l=b4 LEQ r=b5      { Not(XOR (BOOL l, BOOL r)) }
+  | l=b4 LNEQ r=b5     { XOR((BOOL l, BOOL r)) }
   | b=b5               { b }
 
 b5:
