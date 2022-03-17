@@ -119,28 +119,15 @@ let json_of_combinator (c: combinator) (g: connection_graph) (p:placement) : jso
 
 let json_of_circuits (circuits: circuit list) : json list = 
   let layouts = layout_circuits circuits in 
-  (* print_endline ("INITED CTR AT " ^ (string_of_int mid + 1)); *)
-
   let concrete_circuits = List.combine circuits layouts  in
-  (* List.iter print_endline @@ List.map string_of_layout layouts; *)
-  
   let wrapped = List.map wrap_io concrete_circuits in 
-  (* List.iter (fun (c, l) -> 
-    print_endline (string_of_layout l);
-    let combs, g, _ = c in 
-    List.iter print_endline @@ List.map string_of_combinator combs;
-    print_edges g;
-
-    
-    ) wrapped; *)
-  List.concat_map json_of_circuit wrapped 
+  let remapped = remap_ids_concrete wrapped in 
+  List.concat_map json_of_circuit remapped 
 
 let compile_bexp_to_circuit ?optimize:(optimize=true) (o_sig:symbol) (b: bexp) : circuit = 
   let circuit = circuit_of_bexp o_sig b in 
     if optimize then 
       let circuit_opt = primitive_optimization circuit in
-      (* let circuit_opt = remap_ids ctr circuit_opt in *)
-      (* wrap_io ctr circuit_opt  *)
       circuit_opt
     else 
       circuit 

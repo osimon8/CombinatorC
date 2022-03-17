@@ -352,7 +352,10 @@ let wrap_io (circ:concrete_circuit) : concrete_circuit =
   let i_pole = Pole (inp_id) in 
 
   let ox, oy = origin in
-  let i_pole_placement = (ox -. 1., oy) in 
+  let sx, sy = size in 
+  let y_level = oy +. float_of_int (sy / 2) in 
+
+  let i_pole_placement = (ox -. 1., y_level) in 
 
   let wire_input conn = connect_primary g (P inp_id) conn in
   let wire_in i = wire_input (i_conn_of_id i combs) in
@@ -361,33 +364,43 @@ let wrap_io (circ:concrete_circuit) : concrete_circuit =
   let inp, inp_placements = if has_input then 
             let id = get_entity_id () in
             (wire_input (C id);
-            [i_pole; Constant (id, List.map (fun v -> v, 1l) i_sigs)], [i_pole_placement; (ox -. 1., oy +. 1.5)]) 
+            [i_pole; Constant (id, List.map (fun v -> v, 1l) (List.sort Stdlib.compare i_sigs))], [i_pole_placement; (ox -. 1., y_level +. 1.5)]) 
             else [i_pole], [i_pole_placement] in
 
   let oid = get_entity_id () in 
   let o_pole = Pole (oid) in
-  let sx, sy = size in 
-  let o_placement = (ox +. float_of_int (sx + 1), oy) in  
+  let o_placement = (ox +. float_of_int (sx + 1), y_level) in  
 
   let wire_out i = connect_primary g (o_conn_of_id i combs) (P oid) in
 
-  List.iter wire_in input;
-  (* let rec connect_inputs input = 
+  (* List.iter wire_in input; *)
+  (* List.iter (fun i -> print_endline (string_of_int i)) input; *)
+  let rec connect_inputs input = 
     begin match input with 
     | [] -> () 
     | id :: [] -> wire_in id
-    | id1 :: id2 :: tl  -> connect_primary g (i_conn_of_id id1 combs) (i_conn_of_id id2 combs);
-                           connect_inputs tl
-    end in  *)
-  (* connect_inputs input; *)
-  List.iter wire_out output;
+    | id1 :: id2 :: tl  -> 
+                           connect_primary g (i_conn_of_id id1 combs) (i_conn_of_id id2 combs);
+                           connect_inputs (id2 :: tl)
+    end in  
+  let rec connect_outputs output = 
+    begin match output with 
+    | [] -> () 
+    | id :: [] -> wire_out id
+    | id1 :: id2 :: tl  -> 
+                           connect_primary g (o_conn_of_id id1 combs) (o_conn_of_id id2 combs);
+                           connect_outputs (id2 :: tl)
+    end in  
+  connect_inputs input;
+  connect_outputs output;
+  (* List.iter wire_out output; *)
 
   let new_combs = o_pole :: inp @ combs in
   let iids = List.map id_of_combinator inp in 
 
   let new_c = (new_combs, g, (oid, i_sigs, o_sigs, iids, [oid])) in
   let new_placements = o_placement :: inp_placements @ placements in 
-  new_c, ((ox -. 2., oy -. 1.), (sx + 2, sy), new_placements)
+  new_c, ((ox -. 2., Float.min y_level oy), (sx + 4, sy), new_placements)
 
   (* let combs, g, (mid, i_sigs, o_sigs, _, oids) = input_signal_isolation ctr inp_id new_c in
   (combs, g, (mid, i_sigs, o_sigs, iids, oids)) *)
@@ -440,44 +453,52 @@ let rec primitive_optimization (circuit:circuit) : circuit =
   (u_combs @ new_combs, g, meta)
 
 (* Remap ids after combinators have been deleted through optimization passes *)
-let remap_ids (circuit:circuit) : circuit = 
-    let _  = failwith "not ready yet"  in
-  let combs, g, meta = circuit in 
-  let _, i_sigs, o_sigs, input, output = meta in
-  let ctr = create_ctr () in 
-  let id_map = List.map (fun c -> let i = ctr () in id_of_combinator c, i) combs in 
+let remap_ids ?reset_ctr:(reset_ctr=true) (circuits:circuit list) : circuit list = 
+  if reset_ctr then reset_entity_ctr ();
 
-  let (~!) i = List.assoc i id_map in 
-  let (~$) c = ~!(id_of_conn c) in
-  let (~$$) c = ~!(id_of_combinator c) in
+  let remap circuit = 
+    let combs, g, meta = circuit in 
+    let _, i_sigs, o_sigs, input, output = meta in
+    let id_map = List.map (fun c -> let i = get_entity_id () in id_of_combinator c, i) combs in 
 
-  let new_g = CG.create () in 
+    let (~!) i = List.assoc i id_map in 
+    let (~$) c = ~!(id_of_conn c) in
+    let (~$$) c = ~!(id_of_combinator c) in
 
-  let remap_conn c =
-    let id = ~$c in
-     begin match c with 
-    | Ain i -> Ain id
-    | Aout i -> Aout id
-    | Din i -> Din id
-    | Dout i -> Dout id
-    | C i -> C id
-    | P i -> P id
-    end in
+    let new_g = CG.create () in 
 
-  CG.iter_edges_e (fun (c1, c, c2) -> connect c new_g (remap_conn c1) (remap_conn c2)) g;
-  let new_combs = List.map (fun c -> let i = ~$$c in begin match c with 
-                                        | Arithmetic (_, cfg) -> Arithmetic (i, cfg)
-                                        | Decider (_, cfg) -> Decider (i, cfg)
-                                        | Constant (_, cfg) -> Constant (i, cfg)
-                                        | Pole _ -> Pole i
-                                        end) combs in 
+    let remap_conn c =
+      let id = ~$c in
+      begin match c with 
+      | Ain i -> Ain id
+      | Aout i -> Aout id
+      | Din i -> Din id
+      | Dout i -> Dout id
+      | C i -> C id
+      | P i -> P id
+      end in
 
-  let m_id = List.fold_left (fun acc (_, i) -> max acc i) (-1) id_map in
+    CG.iter_edges_e (fun (c1, c, c2) -> connect c new_g (remap_conn c1) (remap_conn c2)) g;
+    let new_combs = List.map (fun c -> let i = ~$$c in begin match c with 
+                                          | Arithmetic (_, cfg) -> Arithmetic (i, cfg)
+                                          | Decider (_, cfg) -> Decider (i, cfg)
+                                          | Constant (_, cfg) -> Constant (i, cfg)
+                                          | Pole _ -> Pole i
+                                          end) combs in 
 
-  let new_input = List.map (~!) input in 
-  let new_output = List.map (~!) output in 
+    let m_id = List.fold_left (fun acc (_, i) -> max acc i) (-1) id_map in
 
-  (new_combs, new_g, (m_id, i_sigs, o_sigs, new_input, new_output))
+    let new_input = List.map (~!) input in 
+    let new_output = List.map (~!) output in 
+
+    (new_combs, new_g, (m_id, i_sigs, o_sigs, new_input, new_output))
+  in
+  List.map remap circuits 
+
+let remap_ids_concrete ?reset_ctr:(reset_ctr=true) (circuits:concrete_circuit list) : concrete_circuit list = 
+  let raw, layouts = List.split circuits in 
+  let remapped = remap_ids ~reset_ctr raw in 
+  List.combine remapped layouts
 
 let circuit_concat (c1:circuit) (c2:circuit) : circuit = 
   let combs1, g1, meta = c1 in 

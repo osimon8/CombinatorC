@@ -21,7 +21,7 @@ let string_of_placement p =
   let x, y = p in
   "(" ^ (string_of_float x) ^ ", " ^ (string_of_float y) ^ ")"
 
-let conn_length = 10 
+let conn_length = 9 
 
 let (+~) x y = Float.add x (float_of_int y)
 let (+~~) x y = Float.add (float_of_int x) y
@@ -184,7 +184,7 @@ in
     let pos, size, placements = layout ~pos:(acc) strategy c in 
     let px, py = pos in 
     let _, sy = size in 
-    (px, py +~ sy +. 2.), (pos, size, placements)
+    (px, py +~ sy +. 1.5), (pos, size, placements)
   in
 
   let _, layouts = List.fold_left_map inter (0.,0.) circuits in 
