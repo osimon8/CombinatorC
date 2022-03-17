@@ -121,7 +121,12 @@ let optimize_bexp (b:bexp) : bexp =
     | Mul (b1, Exp (Lit 2l, b2)) 
     | Mul (Exp (Lit 2l, b2), b1) -> Lshift (o b1, o b2) 
 
-    | Div (b1, Exp (Lit 2l, b2)) -> Rshift (o b1, o b2) 
+    (* Associate lits so they can be interpreted. TODO: add more of these *)
+    | Mul (Mul(Lit l1, b1), Lit l2) -> Mul(o b1, o (Mul (Lit l1, Lit l2)))
+    | Plus (Plus (Lit l1, b1), Lit l2) -> Plus(o b1, o (Plus (Lit l1, Lit l2))) 
+    | Minus (Plus (Lit l1, b1), Lit l2) -> Plus(o b1, o (Minus (Lit l1, Lit l2))) 
+
+    (* | Div (b1, Exp (Lit 2l, b2)) -> Rshift (o b1, o b2)  *)
 
     | Plus (b, Lit l) -> if l < 0l then Minus (o b, Lit (Int32.neg l)) else Plus (o b, Lit l)
     | Plus (b1, Neg b2) -> Minus (o b1, o b2)

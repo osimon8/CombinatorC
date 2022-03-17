@@ -111,9 +111,56 @@ let uses_signal (comb:combinator) (s:symbol) : bool =
     end in 
 
   begin match comb with 
-  | Arithmetic (id, (op1, _, op2, op3)) -> aop_uses op1 || aop_uses op2
+  | Arithmetic (id, (op1, _, op2, _)) -> aop_uses op1 || aop_uses op2
   | Decider (id, (op1, _, op2, op3, t)) -> dop_uses op1 true t || dop_uses op2 true t || dop_uses op3 false t
   | Constant (_, sigs) -> List.mem s (List.map fst sigs)  
+  | Pole _ -> false 
+  end 
+
+let uses_signal_in_input (comb:combinator) (s:symbol) : bool = 
+    let aop_uses (aop:aop) = 
+    begin match aop with 
+    | Symbol s1 -> s1 = s 
+    | Const _ -> false 
+    | Each -> true 
+    end in
+
+  let dop_uses dop = 
+    begin match dop with 
+    | Symbol s1 -> s1 = s 
+    | Const _ -> false
+    | Anything
+    | Everything 
+    | Each -> true 
+    end in 
+
+  begin match comb with 
+  | Arithmetic (id, (op1, _, op2, _)) -> aop_uses op1 || aop_uses op2
+  | Decider (id, (op1, _, op2, op3, t)) -> dop_uses op1 || dop_uses op2
+  | Constant (_, sigs) -> List.mem s (List.map fst sigs)  
+  | Pole _ -> false 
+  end 
+
+
+let uses_wildcard (comb:combinator) : bool = 
+    let aop_uses (aop:aop) = 
+    begin match aop with 
+    | Each -> true 
+    | _ -> false
+    end in
+
+  let dop_uses dop = 
+    begin match dop with 
+    | Anything
+    | Everything 
+    | Each -> true 
+    | _ -> false
+    end in 
+
+  begin match comb with 
+  | Arithmetic (id, (op1, _, op2, op3)) -> aop_uses op1 || aop_uses op2 || aop_uses op3
+  | Decider (id, (op1, _, op2, op3, t)) -> dop_uses op1 || dop_uses op2  || dop_uses op3 
+  | Constant (_, sigs) -> false
   | Pole _ -> false 
   end 
 
@@ -170,4 +217,12 @@ let string_of_decider_op (op:decider_op) : string =
  | Lte -> "≤"
  | Eq -> "="
  | Neq -> "≠"
+end
+
+let string_of_combinator (comb:combinator) : string = 
+  begin match comb with 
+  | Arithmetic (id, _) -> "Arithmetic: " ^ string_of_int id
+  | Decider (id, _) -> "Decider: " ^ string_of_int id
+  | Constant (id, _) -> "Constant: " ^ string_of_int id
+  | Pole id -> "Pole: " ^ string_of_int id
 end

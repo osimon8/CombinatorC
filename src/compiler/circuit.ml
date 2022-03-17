@@ -1,4 +1,5 @@
 open Combinator
+open Utils
 
 type wire_color = 
  | Red 
@@ -36,6 +37,18 @@ type connection_graph = CG.t
 type circuit_meta = id * (symbol list) * (symbol list) * (id list) * (id list) 
 
 type circuit = combinator list * connection_graph * circuit_meta
+
+let entity_ctr = ref (create_ctr ())
+
+let get_entity_id () : id = 
+  let v = !entity_ctr () in
+  (* print_endline ("INCED ENTITY CTR, RETURNING: " ^ string_of_int v); *)
+  v
+let reset_entity_ctr () =  entity_ctr := create_ctr ()
+
+let mid_of_circuit (circuit:circuit) : id = 
+  let _, _, (id, _, _, _, _) = circuit in 
+  id
 
 (* input pole id, output pole id, circuit *)
 (* type wrapped_circuit = id * id * circuit  *)

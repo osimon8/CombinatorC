@@ -41,4 +41,4 @@ let config_of_directives directives : compiler_config =
   end
   in
   List.iter internal directives;
-  { layout=(!layout); primary_color=Red }
+  { layout=(!layout); primary_color=(!color) }

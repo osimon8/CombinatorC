@@ -7,6 +7,14 @@ type grid = bool array array
 type placement = float * float
 
 type circuit_layout = placement * size * placement list 
+
+type concrete_circuit = circuit * circuit_layout
+
+let string_of_layout circuit_layout = 
+  let (ox,oy), (sx, sy), _ = circuit_layout in 
+  "Origin: (" ^ string_of_float ox ^ ", " ^ string_of_float oy ^ ") "
+  ^ "Size: (" ^ string_of_int sx ^ ", " ^ string_of_int sy ^ ")"
+
 let poi i j = (float_of_int i, float_of_int j)
 
 let string_of_placement p = 
@@ -94,8 +102,7 @@ let make_placement (grid:grid) (p:placement) (s:size) : unit =
   iter_over_size_in_grid f grid p s
 
 
-let place_identity (grid:grid) (comb: combinator) : placement = 
-  let id = id_of_combinator comb in 
+let place_identity (grid:grid) id (comb: combinator) : placement = 
   let s = size_of_combinator comb in
   let l = conn_length + 1 in
 
@@ -110,13 +117,14 @@ let place_identity (grid:grid) (comb: combinator) : placement =
   done;
 
   make_placement grid !p s;
-  center_of_size !p (size_of_combinator comb)
+  !p
+  (* center_of_size !p (size_of_combinator comb) *)
 
-let layout_identity ?pos:(pos=(0.,0.)) (c:circuit) : placement list = 
+let layout_identity (c:circuit) : placement list = 
   let combs, _, _ = c in 
   let g = gen_grid () in 
-  let f = place_identity g in 
-  List.map f combs
+  let f i c = place_identity g i c in 
+  List.mapi f combs
 
 let place_naive (grid:grid) (g:connection_graph) (comb: combinator) : placement = 
   let s = size_of_combinator comb in 
@@ -124,9 +132,10 @@ let place_naive (grid:grid) (g:connection_graph) (comb: combinator) : placement 
   let i = Random.int (List.length placements) in 
   let p = List.nth placements i in 
   make_placement grid p s;
-  center_of_size p s
+  p
+  (* center_of_size p s *)
 
-let layout_naive ?pos:(pos=(0.,0.)) (c:circuit) : placement list = 
+let layout_naive (c:circuit) : placement list = 
   let combs, g, _ = c in 
   let grid : grid = gen_grid () in 
 
@@ -142,15 +151,27 @@ let layout_naive ?pos:(pos=(0.,0.)) (c:circuit) : placement list =
 let layout ?pos:(pos=(0.,0.)) f (c:circuit) : circuit_layout = 
   let placements = f c in 
   let ox, oy = pos in 
-  let p_a = List.map (fun (x, y) -> (x +. ox, y +. oy)) placements in 
+  let placements = List.map (fun (x, y) -> (x +. ox, y +. oy)) placements in
+  let combs, _, _ = c in 
+  let zipped = List.combine combs placements in 
+  let p_a = List.map (fun (c, (x, y)) -> 
+    (* let s = size_of_combinator c in   *)
+    (* center_of_size (x +. ox, y +. oy) s)  *)
+    (x, y))
+    zipped in 
+  let p_b = List.map (fun (c, (x, y)) -> 
+    let sx, sy = size_of_combinator c in  
+    (x +. (float_of_int sx), y +. (float_of_int sy)))
+    zipped in 
   let min_x = List.fold_left (fun acc (x,_) -> min acc x) Float.max_float p_a in  
   let min_y = List.fold_left (fun acc (_,y) -> min acc y) Float.max_float p_a in  
-  let max_x = List.fold_left (fun acc (x,_) -> max acc x) Float.min_float p_a in  
-  let max_y = List.fold_left (fun acc (_,y) -> max acc y) Float.min_float p_a in  
+  let max_x = List.fold_left (fun acc (x,_) -> max acc x) Float.min_float p_b in  
+  let max_y = List.fold_left (fun acc (_,y) -> max acc y) Float.min_float p_b in  
 
-  (min_x, min_y), (int_of_float (max_x -. min_x), int_of_float (max_y -. min_y)), p_a
+  (min_x, min_y), (int_of_float (max_x -. min_x), int_of_float (max_y -. min_y)), 
+  List.map (fun (c,p) -> let s = size_of_combinator c in center_of_size p s) zipped 
 
-let layout_circuits (circuits: circuit list) : placement list list = 
+let layout_circuits (circuits: circuit list) : circuit_layout list = 
   let { layout=l } = get_config () in 
   let strategy =
     begin match l with 
@@ -163,8 +184,9 @@ in
     let pos, size, placements = layout ~pos:(acc) strategy c in 
     let px, py = pos in 
     let _, sy = size in 
-    (px, py +~ sy +. 1.), (pos, size, placements)
+    (px, py +~ sy +. 2.), (pos, size, placements)
   in
 
   let _, layouts = List.fold_left_map inter (0.,0.) circuits in 
-  List.map (fun (_, _, p) -> p) layouts
+  (* List.map (fun (_, _, p) -> p) layouts *)
+  layouts
