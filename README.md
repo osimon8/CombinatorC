@@ -49,7 +49,7 @@ A CombinatorC program starts with optional compiler directives, and is followed 
 
 Programs will be compiled into a set of circuits, each including an input pole and output pole. Wire the intended circuit inputs to the input pole. 
 
-Comments can be writted using `//`.
+Comments can be written using `//`.
 
 ### Signals 
 
@@ -63,6 +63,7 @@ An expression is either:
 - An integer literal (e.g. `10`, `0`, `-1234`)
 - A boolean literal `true` or `false`  (these are converted to integer literals `1` and `0` respectively)
 - A mathematical expression composed using operators
+- A conditional expression
 
 Signals used in expressions are interpreted as input signals, and the resulting circuit will include a constant combinator wired to the input pole that initially sets every signal to `1`. 
 
@@ -86,11 +87,13 @@ Example decision expression:
 
     A > 4  
 
-Boolean operators compute a boolean result `1` or `0`. Supported operations: `&&`, `||`, `!`
+Boolean operators compute a boolean result `1` or `0`. Supported operations: `&&`, `||`, `!`, `===`, `!==`
+
+`===` and `!==` are logical equality and logical inequality respectively. These should be used if you want to see if the truth value of two values are equal.
 
 Example boolean expression:
 
-    (A && B) || !C
+    E && (A && !B) || (C === D) 
 
 Numeric, decision, and boolean operators can be combined arbitrarily, for example:
 
@@ -102,7 +105,44 @@ Note that this means `!!<exp>` is not necessarily equal to `<exp>`, since the fi
 
 Precedence of operators adheres to the standards of C++. 
 
-### Circuit Bindings 
+### Conditional Expressions
+
+Conditional expressions check to see if some expression evaluates to `true`, and if it does outputs some expression, otherwise it outputs some other expression. These are super useful! Conditionals have syntax `if <exp> then <exp> else <exp>`. Here is an example conditional expression:
+
+    if A || (B && C) then 2 * B else 45
+
+ Note that conditionals are themselves expressions, so they can be used as operands in other expresions. This also means they can be chained together to construct "else if" branches of a conditional. Here is an example of an expression using both of those properties:
+
+    (E + 10) - 
+    if A || (B && C) then
+         2 * B 
+    else if A then
+        A
+    else 
+        D
+
+This expression checks to see if either `A` evaluates to true, or both `B` and `C` evaluate to true. If those conditions hold, it outputs two times the value of `B`. Otherwise, if `A` evaluates to true, the value of `A` is output. Otherwise, `D` is output. The result of that whole expression is subtracted from 10 added to `E`. 
+
+You can also use the coalesce operator `??`, where `<exp1> ?? <exp2>` is shorthand for `if <exp1> then <exp1> else <exp2>`. 
+
+### Note on Equality
+
+ The logical equaliy and inequality operators (`===` and `!==`) should be used for comparing equality of booleans, not the numerical equality operators (`==` and `!=`). The need for these operators arises from the fact that booleans are just values `1` or `0`. So there is ambiguity in the intended meaning of an expression. For example, consider the following expression where the input wire carries signals `A=10` and `B=1`.
+
+    if A === B then 
+        1
+    else 
+        -1 
+
+  This statement would return 1, since `A` and `B` are both non-zero and are therefore logically equal. However, if the expression was instead
+
+    if A === B then 
+        1
+    else 
+        -1 
+
+
+### Circuit Bindings
 
 A circuit binding has the syntax `circuit <output_signal> = <expression>`. If your program has only a single circuit, it should not be terminated by a semicolon. Here is an example circuit binding: 
 
@@ -115,11 +155,14 @@ This produces a circuit with the output signal `D`.
 
 A compiler directive has the format `#<DIRECTIVE> <ARG>`. Directives and arguments should either be all uppercase, or all lowercase. Arguments are specific to a given directive. 
 
-Currently, the only supported directive is `LAYOUT`, which determines how circuits will be laid out on the Factorio grid. `LAYOUT` takes either the argument `IDENTITY` or `NAIVE`. 
+Currently, there are only two supported directives: `PRIMARY` and `LAYOUT`.
 
-`IDENTITY` simply places the circuits in a line, wrapping around to the start if necessary, forming a rectangle. This is the default behavior. 
+`PRIMARY` determines the wire color that the compiler will use to connect combinators, only using the other color when necessary. It takes arguments `RED` or `GREEN`. `RED` is the default setting.
 
-`NAIVE` randomly places each combinator in a position that allows it to connect to all of its necessary inputs and outputs. Not recommended. 
+`LAYOUT` determines how circuits will be laid out on the Factorio grid and  takes either the argument `IDENTITY` or `NAIVE`. 
+
+- `IDENTITY` simply places the circuits in a line, wrapping around to the start if necessary, forming a rectangle. This is the default behavior. 
+- `NAIVE` randomly places each combinator in a position that allows it to connect to all of its necessary inputs and outputs. Not recommended. 
 
 A more sophisticated layout strategy using simulated annealing is planned for future versions. 
 
@@ -131,31 +174,31 @@ More details on the grammar can be found by looking at [parser.mly](src/parser/p
 
 Here is an example program:
 
-    #LAYOUT IDENTITY
+    #PRIMARY GREEN
     
     circuit D = 10 + ((A || B) && (C % 2)) + !5;
 
     // This is a comment
 
-    circuit E = D > 45;
+    circuit E = if D > 45 then F else G + 100;
 
     (65 + 12) >> 2
 
 
-This program will layout the circuits using the `IDENTITY` strategy (this line is unnecessary, because this is the default behavior). It will produce three distinct circuits:
+This program will layout the circuits using green as the primary wire color, only using red wires when necessary. It will produce three distinct circuits:
 - The first circuit has output signal `D`, and takes inputs `A`, `B`, and `C`. 
-- The second circuit has output signal `E`, and takes input `D`. **This is not the same signal `D` as the output of the first circuit, it is a separate input and not related to the first.**
-- The third circuit has output signal checkmark, and takes no inputs. 
+- The second circuit has output signal `E`, and takes inputs `D`, `F`, and `G`. **This is not the same signal `D` as the output of the first circuit, it is a separate input and not related to the first.**
+- The third circuit has output signal checkmark, and takes no inputs. The compiler will attempt to evaluate literal expressions like this immediately, so a constant combinator outputting the result value will be produced
 
 Note that if you intend a circuit binding to be the last output, you must write out the whole binding expression, and not just the output signal. For example:
 
     circuit D = 10 + ((A || B) && (C % 2)) + !5;
-    circuit E = D > 45 
+    circuit E = if D > 45 then F else G + 100 
 
 If you instead wrote: 
 
     circuit D = 10 + ((A || B) && (C % 2)) + !5;
-    circuit E = D > 45;
+    circuit E = if D > 45 then F else G + 100;
     E
 
 This would be interpreted as three separate circuits, with the final circuit consisting of just a single expression that is equal to the input signal `E`. 
@@ -164,10 +207,9 @@ This would be interpreted as three separate circuits, with the final circuit con
 
 I have a lot of potential ideas for how to extend the language and improve functionality, and would love to hear suggestions from people who design circuits in Factorio. What follows is the list of planned additions to the language and compiler:
 
-- Improved layout strategy using simulated annealing to optimize space used
 - Temporary variables 
-- Conditional expressions 
 - Circuit composition operations, such as union (of the outputs) and concatenation 
+- Improved layout strategy using simulated annealing to optimize space used
 - Import of external circuits via a blueprint string
 - Built-in useful circuit constructs, such as timers, filters, latches, and memory cells
 - Operations with wildcard signals (I don't know what this will look like)
