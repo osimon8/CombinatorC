@@ -136,11 +136,12 @@ You can also use the coalesce operator `??`, where `<exp1> ?? <exp2>` is shortha
 
   This statement would return 1, since `A` and `B` are both non-zero and are therefore logically equal. However, if the expression was instead
 
-    if A === B then 
+    if A == B then 
         1
     else 
         -1 
 
+    This statement would return -1, since `A=10` and `B=1` and are therefore not numerically equal, even though they are logically equal. Essentially, when you want the value you are handling to be treated as a boolean, use logical equality and inequality. 
 
 ### Circuit Bindings
 
