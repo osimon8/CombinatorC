@@ -49,11 +49,49 @@ let connect_rand g c1 c2 =
   let f = if Random.bool() then connect_primary else connect_secondary in 
   f g c1 c2
 
+let detect_signal_collision (output_sig:symbol) (b:bexp) : bool = 
+  let rec intern under_conditional b = 
+    let it = intern true in  
+    let i = intern under_conditional in  
+    begin match b with 
+    | Conditional (b1, b2, b3) -> it b1 || it b2 || it b3
+    | Lit l -> false 
+    | Var v -> v = output_sig && under_conditional
+    | Plus (b1, b2)
+    | Minus (b1, b2)
+    | Div (b1, b2)
+    | Mul (b1, b2)
+    | Exp (b1, b2)
+    | Mod (b1, b2)
+    | Lshift (b1, b2)
+    | Rshift (b1, b2)
+    | AND (b1, b2)
+    | OR (b1, b2)
+    | XOR (b1, b2)
+    | Gt (b1, b2) 
+    | Lt (b1, b2) 
+    | Gte (b1, b2) 
+    | Lte (b1, b2) 
+    | Eq (b1, b2) 
+    | Neq (b1, b2) 
+    | LAND (b1, b2)
+    | LOR (b1, b2)
+    | NAND (b1, b2)
+    | NOR (b1, b2) -> i b1 || i b2
+    | Not b 
+    | BOOL b
+    | Neg b -> i b
+    end in 
+  intern false b 
+
 let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit = 
   let vars = vars_in_bexp b in 
   let sigs = output_sig :: vars in
 
   let sig_ctr = create_sig_ctr sigs in
+  let collision = detect_signal_collision output_sig b in 
+  let original_out = output_sig in 
+  let output_sig = if collision then sig_ctr () else original_out in 
 
   let g = CG.create () in 
 
@@ -214,13 +252,19 @@ let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit =
   | Some l -> l 
   | None -> [] 
   end in 
-  let oids = List.map id_of_conn o_conns in 
+  let combs, oids = 
+    if collision then 
+      let id = get_entity_id () in 
+      connect o_conns [Ain id];
+      List.rev (Arithmetic (id, (Symbol o_sig, Add, Const 0l, Symbol original_out)) :: combs), 
+      [id]
+  else 
+    combs, List.map id_of_conn o_conns
+  in
 
   let m_id = List.fold_left (fun acc c -> max acc (id_of_combinator c)) Int.min_int combs in
-  (* List.iter (fun i -> print_endline (string_of_int i)) iids;
-  print_endline "+++"; *)
 
- (combs, g, (m_id, vars, [o_sig], iids, oids))
+ (combs, g, (m_id, vars, [original_out], iids, oids))
 
 let lookup (combs:combinator list) (id:id)  : combinator =
   List.find (fun c -> id_of_combinator c = id) combs 

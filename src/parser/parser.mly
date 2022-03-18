@@ -79,11 +79,16 @@ b_assn:
   | b=bexp { [("check", b)] } 
 
 bexp:
-  | b=b_o { b } 
+  | b=b_if { b } 
+
+b_if:
+  | IF g=b_if THEN b1=b_if ELSE b2=b_if   { Conditional(g, b1, b2) }
+  | b=b_o                                 { b }
 
 b_o:
-  | l=b_o LOR r=b_a      { LOR(l, r) }
-  | b=b_a               { b }
+  | l=b_o LOR r=b_a                  { LOR(l, r) }
+  | b1=b_o COALESCE b2=b_a           { Conditional(b1, b1, b2) }
+  | b=b_a                            { b }
 
 b_a:
   | l=b_a LAND r=b1     { LAND(l, r) }
@@ -132,21 +137,16 @@ b8:
   | b=b9               { b }
 
 b9:
-  | l=b9 EXP r=b10     { Exp(l, r) }
+  | l=b10 EXP r=b9     { Exp(l, r) }
   | b=b10              { b }
 
 b10: 
   | MINUS b=b10        { Neg(b) }
   | NOT b=b10          { Not(b) }
-  | b=b_coalesce        { b }
-
-b_coalesce:
-  | b1=b_coalesce COALESCE b2=b11           { Conditional(b1, b1, b2) }
-  | b=b11                                   { b }
+  | b=b11        { b }
 
 b11: 
   | LPAREN b=bexp RPAREN                     { b }
-  | IF g=bexp THEN b1=b11 ELSE b2=b11        { Conditional(g, b1, b2) }
   | b=b12                                    { b }
 
 b12:

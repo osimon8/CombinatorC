@@ -136,6 +136,8 @@ let optimize_bexp (b:bexp) : bexp =
 
     | Mul (Neg b1, Neg b2) -> Mul (o b1, o b2)
 
+    | Exp (Exp (b1, b2), b3) -> Exp (o b1, Mul (o b2, o b3))
+
     (* BEGIN SECTION N - NECESSARY FOR PROPER COMPILATION *)
     | Gt (Lit l1, Lit l2) -> if l1 > l2 then Lit 1l else Lit 0l
     | Lt (Lit l1, Lit l2) -> if l1 < l2 then Lit 1l else Lit 0l
