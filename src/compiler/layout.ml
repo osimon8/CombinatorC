@@ -183,8 +183,12 @@ in
   let inter acc c =
     let pos, size, placements = layout ~pos:(acc) strategy c in 
     let px, py = pos in 
-    let _, sy = size in 
-    (px, py +~ sy +. 1.5), (pos, size, placements)
+    let sx, sy = size in 
+    let sy = max 3 sy in 
+    (* print_endline ("POS: (" ^ string_of_float px ^ ", " ^ string_of_float py ^ ")"); *)
+    (* print_endline ("SIZE: (" ^ string_of_int sx ^ ", " ^ string_of_int sy ^ ")"); *)
+
+    (px, py +~ sy +. 1.), (pos, size, placements)
   in
 
   let _, layouts = List.fold_left_map inter (0.,0.) circuits in 
