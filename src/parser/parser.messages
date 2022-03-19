@@ -1,0 +1,567 @@
+toplevel: XOR
+##
+## Ends in an error in state: 0.
+##
+## toplevel' -> . toplevel [ # ]
+##
+## The known suffix of the stack is as follows:
+##
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: NOT XOR
+##
+## Ends in an error in state: 2.
+##
+## b10 -> NOT . b10 [ XOR THEN SEMI RSHIFT RPAREN PLUS OR NEQ MUL MOD MINUS LTE LT LSHIFT LOR LNEQ LEQ LAND GTE GT EXP EQ EOF ELSE DIV COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## NOT
+##
+
+Missing operand of NOT, syntax is "!<exp>"
+
+toplevel: MINUS XOR
+##
+## Ends in an error in state: 3.
+##
+## b10 -> MINUS . b10 [ XOR THEN SEMI RSHIFT RPAREN PLUS OR NEQ MUL MOD MINUS LTE LT LSHIFT LOR LNEQ LEQ LAND GTE GT EXP EQ EOF ELSE DIV COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## MINUS
+##
+
+Missing operand of negation, syntax is "-<exp>"
+
+toplevel: LPAREN XOR
+##
+## Ends in an error in state: 4.
+##
+## b11 -> LPAREN . bexp RPAREN [ XOR THEN SEMI RSHIFT RPAREN PLUS OR NEQ MUL MOD MINUS LTE LT LSHIFT LOR LNEQ LEQ LAND GTE GT EXP EQ EOF ELSE DIV COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## LPAREN
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: IF XOR
+##
+## Ends in an error in state: 6.
+##
+## b_if -> IF . b_if THEN b_if ELSE b_if [ THEN SEMI RPAREN EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## IF
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT LOR XOR
+##
+## Ends in an error in state: 8.
+##
+## b_o -> b_o LOR . b_a [ THEN SEMI RPAREN LOR EOF ELSE COALESCE ]
+##
+## The known suffix of the stack is as follows:
+## b_o LOR
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT LAND XOR
+##
+## Ends in an error in state: 10.
+##
+## b_a -> b_a LAND . b1 [ THEN SEMI RPAREN LOR LAND EOF ELSE COALESCE ]
+##
+## The known suffix of the stack is as follows:
+## b_a LAND
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT MUL XOR
+##
+## Ends in an error in state: 13.
+##
+## b8 -> b8 MUL . b9 [ XOR THEN SEMI RSHIFT RPAREN PLUS OR NEQ MUL MOD MINUS LTE LT LSHIFT LOR LNEQ LEQ LAND GTE GT EQ EOF ELSE DIV COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b8 MUL
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT WORD
+##
+## Ends in an error in state: 17.
+##
+## b9 -> b10 . EXP b9 [ XOR THEN SEMI RSHIFT RPAREN PLUS OR NEQ MUL MOD MINUS LTE LT LSHIFT LOR LNEQ LEQ LAND GTE GT EQ EOF ELSE DIV COALESCE AND ]
+## b9 -> b10 . [ XOR THEN SEMI RSHIFT RPAREN PLUS OR NEQ MUL MOD MINUS LTE LT LSHIFT LOR LNEQ LEQ LAND GTE GT EQ EOF ELSE DIV COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b10
+##
+
+Unterminated expression 
+
+toplevel: LIT EXP XOR
+##
+## Ends in an error in state: 18.
+##
+## b9 -> b10 EXP . b9 [ XOR THEN SEMI RSHIFT RPAREN PLUS OR NEQ MUL MOD MINUS LTE LT LSHIFT LOR LNEQ LEQ LAND GTE GT EQ EOF ELSE DIV COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b10 EXP
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT MOD XOR
+##
+## Ends in an error in state: 20.
+##
+## b8 -> b8 MOD . b9 [ XOR THEN SEMI RSHIFT RPAREN PLUS OR NEQ MUL MOD MINUS LTE LT LSHIFT LOR LNEQ LEQ LAND GTE GT EQ EOF ELSE DIV COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b8 MOD
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT DIV XOR
+##
+## Ends in an error in state: 22.
+##
+## b8 -> b8 DIV . b9 [ XOR THEN SEMI RSHIFT RPAREN PLUS OR NEQ MUL MOD MINUS LTE LT LSHIFT LOR LNEQ LEQ LAND GTE GT EQ EOF ELSE DIV COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b8 DIV
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT PLUS XOR
+##
+## Ends in an error in state: 25.
+##
+## b7 -> b7 PLUS . b8 [ XOR THEN SEMI RSHIFT RPAREN PLUS OR NEQ MINUS LTE LT LSHIFT LOR LNEQ LEQ LAND GTE GT EQ EOF ELSE COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b7 PLUS
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT MINUS XOR
+##
+## Ends in an error in state: 27.
+##
+## b7 -> b7 MINUS . b8 [ XOR THEN SEMI RSHIFT RPAREN PLUS OR NEQ MINUS LTE LT LSHIFT LOR LNEQ LEQ LAND GTE GT EQ EOF ELSE COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b7 MINUS
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT RSHIFT XOR
+##
+## Ends in an error in state: 30.
+##
+## b6 -> b6 RSHIFT . b7 [ XOR THEN SEMI RSHIFT RPAREN OR NEQ LTE LT LSHIFT LOR LNEQ LEQ LAND GTE GT EQ EOF ELSE COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b6 RSHIFT
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT LSHIFT XOR
+##
+## Ends in an error in state: 32.
+##
+## b6 -> b6 LSHIFT . b7 [ XOR THEN SEMI RSHIFT RPAREN OR NEQ LTE LT LSHIFT LOR LNEQ LEQ LAND GTE GT EQ EOF ELSE COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b6 LSHIFT
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT LTE XOR
+##
+## Ends in an error in state: 35.
+##
+## b5 -> b5 LTE . b6 [ XOR THEN SEMI RPAREN OR NEQ LTE LT LOR LNEQ LEQ LAND GTE GT EQ EOF ELSE COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b5 LTE
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT LT XOR
+##
+## Ends in an error in state: 37.
+##
+## b5 -> b5 LT . b6 [ XOR THEN SEMI RPAREN OR NEQ LTE LT LOR LNEQ LEQ LAND GTE GT EQ EOF ELSE COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b5 LT
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT GTE XOR
+##
+## Ends in an error in state: 39.
+##
+## b5 -> b5 GTE . b6 [ XOR THEN SEMI RPAREN OR NEQ LTE LT LOR LNEQ LEQ LAND GTE GT EQ EOF ELSE COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b5 GTE
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT GT XOR
+##
+## Ends in an error in state: 41.
+##
+## b5 -> b5 GT . b6 [ XOR THEN SEMI RPAREN OR NEQ LTE LT LOR LNEQ LEQ LAND GTE GT EQ EOF ELSE COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b5 GT
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT NEQ XOR
+##
+## Ends in an error in state: 44.
+##
+## b4 -> b4 NEQ . b5 [ XOR THEN SEMI RPAREN OR NEQ LOR LNEQ LEQ LAND EQ EOF ELSE COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b4 NEQ
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT LNEQ XOR
+##
+## Ends in an error in state: 46.
+##
+## b4 -> b4 LNEQ . b5 [ XOR THEN SEMI RPAREN OR NEQ LOR LNEQ LEQ LAND EQ EOF ELSE COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b4 LNEQ
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT LEQ XOR
+##
+## Ends in an error in state: 48.
+##
+## b4 -> b4 LEQ . b5 [ XOR THEN SEMI RPAREN OR NEQ LOR LNEQ LEQ LAND EQ EOF ELSE COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b4 LEQ
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT EQ XOR
+##
+## Ends in an error in state: 50.
+##
+## b4 -> b4 EQ . b5 [ XOR THEN SEMI RPAREN OR NEQ LOR LNEQ LEQ LAND EQ EOF ELSE COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b4 EQ
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT AND XOR
+##
+## Ends in an error in state: 53.
+##
+## b3 -> b3 AND . b4 [ XOR THEN SEMI RPAREN OR LOR LAND EOF ELSE COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## b3 AND
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT XOR XOR
+##
+## Ends in an error in state: 56.
+##
+## b2 -> b2 XOR . b3 [ XOR THEN SEMI RPAREN OR LOR LAND EOF ELSE COALESCE ]
+##
+## The known suffix of the stack is as follows:
+## b2 XOR
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT OR XOR
+##
+## Ends in an error in state: 59.
+##
+## b1 -> b1 OR . b2 [ THEN SEMI RPAREN OR LOR LAND EOF ELSE COALESCE ]
+##
+## The known suffix of the stack is as follows:
+## b1 OR
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT COALESCE XOR
+##
+## Ends in an error in state: 62.
+##
+## b_o -> b_o COALESCE . b_a [ THEN SEMI RPAREN LOR EOF ELSE COALESCE ]
+##
+## The known suffix of the stack is as follows:
+## b_o COALESCE
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: IF LIT SEMI
+##
+## Ends in an error in state: 64.
+##
+## b_if -> IF b_if . THEN b_if ELSE b_if [ THEN SEMI RPAREN EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## IF b_if
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 17, spurious reduction of production b9 -> b10
+## In state 11, spurious reduction of production b8 -> b9
+## In state 12, spurious reduction of production b7 -> b8
+## In state 24, spurious reduction of production b6 -> b7
+## In state 29, spurious reduction of production b5 -> b6
+## In state 34, spurious reduction of production b4 -> b5
+## In state 43, spurious reduction of production b3 -> b4
+## In state 52, spurious reduction of production b2 -> b3
+## In state 55, spurious reduction of production b1 -> b2
+## In state 61, spurious reduction of production b_a -> b1
+## In state 69, spurious reduction of production b_o -> b_a
+## In state 7, spurious reduction of production b_if -> b_o
+##
+
+Missing "then" of conditional, syntax is "if <exp> then <exp> else <exp>"
+
+toplevel: IF LIT THEN XOR
+##
+## Ends in an error in state: 65.
+##
+## b_if -> IF b_if THEN . b_if ELSE b_if [ THEN SEMI RPAREN EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## IF b_if THEN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+toplevel: IF LIT THEN LIT THEN
+##
+## Ends in an error in state: 66.
+##
+## b_if -> IF b_if THEN b_if . ELSE b_if [ THEN SEMI RPAREN EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## IF b_if THEN b_if
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 17, spurious reduction of production b9 -> b10
+## In state 11, spurious reduction of production b8 -> b9
+## In state 12, spurious reduction of production b7 -> b8
+## In state 24, spurious reduction of production b6 -> b7
+## In state 29, spurious reduction of production b5 -> b6
+## In state 34, spurious reduction of production b4 -> b5
+## In state 43, spurious reduction of production b3 -> b4
+## In state 52, spurious reduction of production b2 -> b3
+## In state 55, spurious reduction of production b1 -> b2
+## In state 61, spurious reduction of production b_a -> b1
+## In state 69, spurious reduction of production b_o -> b_a
+## In state 7, spurious reduction of production b_if -> b_o
+##
+
+Missing expression after "then" of conditional, syntax is "if <exp> then <exp> else <exp>"
+
+toplevel: IF LIT THEN LIT ELSE XOR
+##
+## Ends in an error in state: 67.
+##
+## b_if -> IF b_if THEN b_if ELSE . b_if [ THEN SEMI RPAREN EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## IF b_if THEN b_if ELSE
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LPAREN LIT THEN
+##
+## Ends in an error in state: 70.
+##
+## b11 -> LPAREN bexp . RPAREN [ XOR THEN SEMI RSHIFT RPAREN PLUS OR NEQ MUL MOD MINUS LTE LT LSHIFT LOR LNEQ LEQ LAND GTE GT EXP EQ EOF ELSE DIV COALESCE AND ]
+##
+## The known suffix of the stack is as follows:
+## LPAREN bexp
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 17, spurious reduction of production b9 -> b10
+## In state 11, spurious reduction of production b8 -> b9
+## In state 12, spurious reduction of production b7 -> b8
+## In state 24, spurious reduction of production b6 -> b7
+## In state 29, spurious reduction of production b5 -> b6
+## In state 34, spurious reduction of production b4 -> b5
+## In state 43, spurious reduction of production b3 -> b4
+## In state 52, spurious reduction of production b2 -> b3
+## In state 55, spurious reduction of production b1 -> b2
+## In state 61, spurious reduction of production b_a -> b1
+## In state 69, spurious reduction of production b_o -> b_a
+## In state 7, spurious reduction of production b_if -> b_o
+## In state 72, spurious reduction of production bexp -> b_if
+##
+
+Unclosed left parenthesis 
+
+toplevel: DIRECTIVE XOR
+##
+## Ends in an error in state: 75.
+##
+## directive -> DIRECTIVE . WORD WORD [ VAR NOT MINUS LPAREN LIT IF DIRECTIVE CIRCUIT_BIND ]
+##
+## The known suffix of the stack is as follows:
+## DIRECTIVE
+##
+
+Missing argument to compiler directive  
+
+toplevel: DIRECTIVE WORD XOR
+##
+## Ends in an error in state: 76.
+##
+## directive -> DIRECTIVE WORD . WORD [ VAR NOT MINUS LPAREN LIT IF DIRECTIVE CIRCUIT_BIND ]
+##
+## The known suffix of the stack is as follows:
+## DIRECTIVE WORD
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: CIRCUIT_BIND XOR
+##
+## Ends in an error in state: 78.
+##
+## b_assn -> CIRCUIT_BIND . b_var ASSIGN bexp [ SEMI EOF ]
+##
+## The known suffix of the stack is as follows:
+## CIRCUIT_BIND
+##
+
+Missing output signal of circuit bind, syntax is "circuit <sig> = <exp>"
+
+toplevel: CIRCUIT_BIND VAR XOR
+##
+## Ends in an error in state: 80.
+##
+## b_assn -> CIRCUIT_BIND b_var . ASSIGN bexp [ SEMI EOF ]
+##
+## The known suffix of the stack is as follows:
+## CIRCUIT_BIND b_var
+##
+
+Missing "=" in circuit bind, syntax is "circuit <sig> = <exp>"
+
+toplevel: CIRCUIT_BIND VAR ASSIGN XOR
+##
+## Ends in an error in state: 81.
+##
+## b_assn -> CIRCUIT_BIND b_var ASSIGN . bexp [ SEMI EOF ]
+##
+## The known suffix of the stack is as follows:
+## CIRCUIT_BIND b_var ASSIGN
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+
+toplevel: LIT THEN
+##
+## Ends in an error in state: 84.
+##
+## toplevel -> program . EOF [ # ]
+##
+## The known suffix of the stack is as follows:
+## program
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 17, spurious reduction of production b9 -> b10
+## In state 11, spurious reduction of production b8 -> b9
+## In state 12, spurious reduction of production b7 -> b8
+## In state 24, spurious reduction of production b6 -> b7
+## In state 29, spurious reduction of production b5 -> b6
+## In state 34, spurious reduction of production b4 -> b5
+## In state 43, spurious reduction of production b3 -> b4
+## In state 52, spurious reduction of production b2 -> b3
+## In state 55, spurious reduction of production b1 -> b2
+## In state 61, spurious reduction of production b_a -> b1
+## In state 69, spurious reduction of production b_o -> b_a
+## In state 7, spurious reduction of production b_if -> b_o
+## In state 72, spurious reduction of production bexp -> b_if
+## In state 89, spurious reduction of production b_assn -> bexp
+## In state 93, spurious reduction of production b_seq -> b_assn
+## In state 94, spurious reduction of production program -> b_seq
+##
+
+"then" can only appear after the guard of a conditional, syntax is "if <exp> then <exp> else <exp>"
+
+toplevel: DIRECTIVE WORD WORD XOR
+##
+## Ends in an error in state: 87.
+##
+## dir_seq -> dir_seq . directive [ VAR NOT MINUS LPAREN LIT IF DIRECTIVE CIRCUIT_BIND ]
+## program -> dir_seq . b_seq [ EOF ]
+##
+## The known suffix of the stack is as follows:
+## dir_seq
+##
+
+Extra argument to compiler directive, directives take only a single argument
+
+toplevel: LIT SEMI XOR
+##
+## Ends in an error in state: 91.
+##
+## b_seq -> b_seq SEMI . b_assn [ SEMI EOF ]
+##
+## The known suffix of the stack is as follows:
+## b_seq SEMI
+##
+
+Missing left operand of binary operator, syntax is "<exp> <bop> <exp>"
+

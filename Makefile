@@ -30,6 +30,14 @@ clean:
 utop: main.exe
 	dune utop
 
+
+generate-messages:
+	dune build @generate-parser-messages
+
+
+update-messages: 
+	dune build @update-parser-messages
+
 run: 
 	dune exec --context=default combc code.fpl
 

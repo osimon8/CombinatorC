@@ -39,7 +39,7 @@ let fail text buffer (checkpoint : _ I.checkpoint) =
   let err = (E.show (show text) buffer) in 
   let indication = sprintf "Syntax error %s.\n" err  in
   try 
-    let message = Errors.message (state checkpoint) in
+    let message = Parser_errors.message (state checkpoint) in
     let message = E.expand (get text checkpoint) message in
     eprintf "%s%s%s" location indication message;
     exit 1
