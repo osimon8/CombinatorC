@@ -1,9 +1,34 @@
 (library
  (name parse)
- (libraries ast compiler))
+ (libraries ast compiler menhirLib))
 
 (ocamllex lexer)
 
 (menhir
  (modules parser)
- (flags --explain))
+ ; (flags --explain --table)
+ (flags -lg 1 -la 1 -lc 2)
+)
+
+(rule
+  (action
+    (with-stdout-to unitActionsParser.mly
+      (run menhir
+        %{dep:parser.mly}
+        --only-preprocess-u
+))))
+
+(menhir
+  (modules unitActionsParser)
+  (flags --table --external-tokens Parser)
+)
+
+
+(rule
+  (action (with-stdout-to errors.ml
+    (run menhir
+      %{dep:parser.mly}
+      --compile-errors %{dep:errors.messages}
+    )
+  ))
+)

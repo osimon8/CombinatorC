@@ -52,6 +52,8 @@ open Compiler.Directive;;
 
 %start toplevel
 
+%on_error_reduce program
+
 %type <directive list * Ast.assignment list> toplevel  
 %type <Ast.bexp> bexp
 %%

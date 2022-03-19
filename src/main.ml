@@ -11,7 +11,7 @@ let optimize = true
   using comparison operations may not compile *)
 let optimize_b = true
 
-let usage_msg = "combc [--output-json] <file1>"
+let usage_msg = "combc [--output-json] <file>"
 let input_file = ref None
 let output_json = ref false 
 let speclist = [("--output-json", Arg.Set output_json, "Output json instead of blueprint string")] 
@@ -25,16 +25,10 @@ let () =
   let name = 
     begin match !input_file with 
     | Some s -> s
-    | None -> failwith ("Missing input file, usage: " ^ usage_msg)
+    | None -> prerr_endline ("Missing input file, usage:\n" ^ usage_msg); exit 1;
     end in
 
-  let code = 
-  try 
-    Core_kernel.In_channel.read_all name
-  with Sys_error s -> failwith s 
-  in
-
-  let directives, assignment_list = parse code in 
+  let directives, assignment_list = parse name in  
   let cfg = config_of_directives directives in 
   set_config cfg;
 

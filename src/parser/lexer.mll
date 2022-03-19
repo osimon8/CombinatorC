@@ -12,9 +12,9 @@
       pos_lnum = 1;
     }
 
-  let unexpected_char lexbuf (c:char) : 'a =
+  let unexpected_char lexbuf (c:char) (d:int) : 'a =
     raise (Lexer_error (
-        Printf.sprintf "Unexpected character: '%c'" c))
+        Printf.sprintf "Unexpected character at position %d: '%c'" d c))
 }
 
 let lowercase = ['a'-'z']
@@ -26,7 +26,7 @@ let num = '-'?digit+
 let identifer = (character | ichar) (character | ichar | digit)*
 let signal = uppercase
 let single_case_word = (uppercase | ichar)(uppercase | ichar)+ | (lowercase | ichar)(lowercase | ichar)+
-let whitespace = ['\t' ' ' '\r' '\n']
+let whitespace = ['\t' ' ' '\r']
 let circuit_bind = "circuit"(whitespace+)
 let newline = '\n' | "\r\n" | eof
 let comment = "//"[^'\r''\n']*newline
@@ -34,8 +34,9 @@ let directive = '#'
 
 rule token = parse
   | eof         { EOF }
-  | comment     
   | whitespace+ { token lexbuf }  (* skip whitespace *)
+  | comment     
+  | '\n'        { MenhirLib.LexerUtil.newline lexbuf; token lexbuf }
   | signal { VAR (lexeme lexbuf) }
   | num    { LIT (Int32.of_string (lexeme lexbuf)) }
   | circuit_bind { CIRCUIT_BIND }
@@ -75,4 +76,4 @@ rule token = parse
   | "==="       { LEQ }
   | "!=="       { LNEQ }
   | single_case_word  { WORD (lexeme lexbuf) }
-  | _ as c      { unexpected_char lexbuf c }
+  | _ as c      { unexpected_char lexbuf c (lexeme_start lexbuf) }
