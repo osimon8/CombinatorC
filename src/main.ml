@@ -1,6 +1,7 @@
 open Utils
 open Parse
-open Ast
+open Ast.Bexp
+open Ast.Ctree
 open Encode
 open Compiler.Compile
 open Compiler.Config
@@ -32,10 +33,12 @@ let () =
   let cfg = config_of_directives directives in 
   set_config cfg;
 
-  let f (o_sig, ast) =
-      let ast = if optimize_b then optimize_bexp ast else ast in 
+  let f ctree =
+      let c = compile_ctree_to_circuit ~optimize_b ~optimize ctree in 
+
+      (* let ast = if optimize_b then optimize_bexp ast else ast in  *)
       (* print_endline (string_of_bexp ast); *)
-      let c = compile_bexp_to_circuit ~optimize o_sig ast in
+      (* let c = compile_bexp_to_circuit~optimize  o_sig ast in *)
       c
   in
 

@@ -1,5 +1,6 @@
 %{
-open Ast;;
+open Ast.Bexp;;
+open Ast.Ctree;;
 open Compiler.Directive;;
 %}
 
@@ -47,6 +48,9 @@ open Compiler.Directive;;
 %token DIRECTIVE
 %token <string> WORD
 
+%token UNION
+%token CONCAT
+
 %token <string> VAR
 %token <int32> LIT
 
@@ -54,8 +58,8 @@ open Compiler.Directive;;
 
 %on_error_reduce program
 
-%type <directive list * Ast.assignment list> toplevel  
-%type <Ast.bexp> bexp
+%type <directive list * ctree list> toplevel  
+%type <bexp> bexp
 %%
 
 toplevel:
@@ -72,13 +76,21 @@ dir_seq:
 directive:
   | DIRECTIVE d=WORD a=WORD   { [parse_directive d a] } 
 
+b_union:
+  | b1=b_union UNION b2=b_concat  { Union (b1, b2) }
+  | b=b_concat                    { b }
+
+b_concat:
+  | b1=b_concat CONCAT b2=b_assn      { Concat (b1, b2) }
+  | b=b_assn                          { b }
+
 b_seq:
   | a1=b_seq SEMI a2=b_assn { a1 @ a2 }
   | b=b_assn    { b }
 
 b_assn:
-  | CIRCUIT_BIND v=b_var ASSIGN b=bexp { [(v, b)] }
-  | b=bexp { [("check", b)] } 
+  | CIRCUIT_BIND v=b_var ASSIGN b=bexp { [Bexp (v, b)] }
+  | b=bexp { [Bexp ("check", b)] } 
 
 bexp:
   | b=b_if { b } 
@@ -148,7 +160,7 @@ b10:
   | b=b11        { b }
 
 b11: 
-  | LPAREN b=bexp RPAREN                     { b }
+  | LPAREN b=b_if RPAREN                     { b }
   | b=b12                                    { b }
 
 b12:

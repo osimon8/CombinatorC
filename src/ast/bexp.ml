@@ -27,8 +27,6 @@ type bexp =
   | BOOL of bexp
   | Conditional of bexp * bexp * bexp 
 
-type assignment = string * bexp
-
 let rec pow base i = 
   begin match i with
   | 0l -> 1l

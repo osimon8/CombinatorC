@@ -1,9 +1,12 @@
 open Circuit
 open Combinator
 open Optimize
+open FirstPhase
 open Layout
 open Utils
-open Ast
+open Ast.Bexp
+open Ast.Ctree
+open Composition
 open Directive
 
 let json_of_symbol s = 
@@ -135,3 +138,19 @@ let compile_bexp_to_circuit ?optimize:(optimize=true) (o_sig:symbol) (b: bexp) :
 let json_of_bexp ?optimize:(optimize=true) (o_sig:symbol) (b: bexp) : json list = 
   let circuit = compile_bexp_to_circuit ~optimize o_sig b in 
   json_of_circuits [circuit]
+
+
+let compile_ctree_to_circuit ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (ctree:ctree) : circuit = 
+  let w o_sig bexp = let ast = 
+                if optimize_b then optimize_bexp bexp else bexp in 
+              compile_bexp_to_circuit ~optimize o_sig ast in 
+  
+  let rec f  ctree = 
+    begin match ctree with 
+    | Bexp (s, b) -> w s b 
+    | Union (b1, b2) -> circuit_union (f b1) (f b2)
+    | Concat (b1, b2) -> circuit_concat (f b1) (f b2)
+  end in 
+
+  let circuit = f ctree in 
+  circuit 

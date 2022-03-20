@@ -1,4 +1,4 @@
-open Ast
+open Ast.Ctree
 open Compiler.Directive
 open Printf
 module L = MenhirLib.LexerUtil
@@ -56,7 +56,7 @@ let slow filename text =
   I.loop_handle succeed (fail text buffer) supplier checkpoint
 
 type parse_result = 
-  | Success of directive list * assignment list
+  | Success of directive list * ctree list
   | Error of string
 
 let fast filename : parse_result =
@@ -79,7 +79,7 @@ let fast filename : parse_result =
     Error text
 
 
-let parse (filename: string) : directive list * assignment list =
+let parse (filename: string) : directive list * ctree list =
   (* First try fast parser, then use slow parser to generate error if fail *)
   begin match fast filename with 
   | Success (d, a) -> (d, a) 

@@ -13,5 +13,5 @@
  (name main)
  (modes native)
  (modules main encode)
- (libraries core_kernel yojson zlib base64 memcpy utils parse compiler))
+ (libraries core_kernel yojson zlib base64 memcpy utils parse compiler ast))
  

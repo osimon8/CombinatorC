@@ -75,5 +75,7 @@ rule token = parse
   | "??"        { COALESCE }
   | "==="       { LEQ }
   | "!=="       { LNEQ }
+  | "\\/"       { UNION }
+  | "@"         { CONCAT }
   | single_case_word  { WORD (lexeme lexbuf) }
   | _ as c      { unexpected_char lexbuf c (lexeme_start lexbuf) }

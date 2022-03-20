@@ -1,5 +1,5 @@
 (library
  (name compiler)
-  (modules circuit combinator optimize compile directive layout config)
+  (modules circuit combinator optimize compile directive layout config firstPhase composition)
  (libraries core_kernel yojson ocamlgraph ast utils)
 )
