@@ -6,6 +6,7 @@ open Layout
 open Utils
 open Ast.Bexp
 open Ast.Ctree
+open Ast.Command
 open Composition
 open Directive
 
@@ -140,17 +141,43 @@ let json_of_bexp ?optimize:(optimize=true) (o_sig:symbol) (b: bexp) : json list 
   json_of_circuits [circuit]
 
 
-let compile_ctree_to_circuit ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (ctree:ctree) : circuit = 
+let compile_ctree_to_circuit ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (lookup: string -> ctree) (ctree:ctree) : circuit = 
   let w o_sig bexp = let ast = 
                 if optimize_b then optimize_bexp bexp else bexp in 
               compile_bexp_to_circuit ~optimize o_sig ast in 
   
-  let rec f  ctree = 
+  let rec f ctree = 
     begin match ctree with 
-    | Bexp (s, b) -> w s b 
+    | Inline (b, o_sig) -> w o_sig b 
+    | Bound s -> f (lookup s)
     | Union (b1, b2) -> circuit_union (f b1) (f b2)
     | Concat (b1, b2) -> circuit_concat (f b1) (f b2)
   end in 
 
   let circuit = f ctree in 
   circuit 
+
+let compile_commands_to_circuits ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (commands: command list) : circuit list = 
+  let table = ref [] in 
+
+  let lookup ident =
+    let rec inter table = 
+      begin match table with 
+      | [] -> prerr_endline @@ "Unknown circuit identifier: \"" ^ ident ^ "\""; exit 1 
+      | h :: tl -> let id, b = h in if id = ident then b else inter tl
+    end in 
+  inter !table in 
+
+  let register ident b o_sig = 
+    table := (ident, Inline (b, o_sig)) :: !table
+  in
+
+  let compile command = 
+    begin match command with 
+    | Assign (ident, b, o_sig) -> register ident b o_sig; None
+    | Output c -> Some (compile_ctree_to_circuit ~optimize_b ~optimize lookup c)
+    end 
+  in
+
+  let circuit_opts = List.map compile commands in 
+  deopt_list circuit_opts  

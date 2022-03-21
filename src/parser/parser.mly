@@ -1,6 +1,7 @@
 %{
 open Ast.Bexp;;
 open Ast.Ctree;;
+open Ast.Command;;
 open Compiler.Directive;;
 %}
 
@@ -42,7 +43,7 @@ open Compiler.Directive;;
 %token ELSE
 
 // %token QUESTION 
-// %token COLON
+%token COLON
 %token COALESCE
 
 %token DIRECTIVE
@@ -51,23 +52,50 @@ open Compiler.Directive;;
 %token UNION
 %token CONCAT
 
+%token OUTPUT
+
 %token <string> VAR
 %token <int32> LIT
+
+%left CONCAT 
+%left UNION 
+
+%nonassoc ELSE
+
+%left COALESCE
+%left LOR 
+%left LAND
+%left OR
+%left XOR 
+%left AND 
+%left EQ NEQ LEQ LNEQ 
+%left LT GT LTE GTE 
+%left LSHIFT RSHIFT 
+%left PLUS MINUS 
+%left MUL DIV MOD 
+%right EXP  
+
+
+%nonassoc NOT 
 
 %start toplevel
 
 %on_error_reduce program
 
-%type <directive list * ctree list> toplevel  
+%type <directive list * command list> toplevel  
 %type <bexp> bexp
+%type <ctree> circuit
 %%
 
 toplevel:
   | p=program EOF { p }
 
 program:
-  | d=dir_seq b=b_seq  { (d, b) }
-  | b=b_seq             { ([], b) }
+  | d=dir_seq b=c_seq  { (d, b) }
+  | b=c_seq             { ([], b) }
+
+c_seq:
+  | l=list(command) { l }
 
 dir_seq: 
   | d1=dir_seq d2=directive   { d1 @ d2 }
@@ -76,96 +104,57 @@ dir_seq:
 directive:
   | DIRECTIVE d=WORD a=WORD   { [parse_directive d a] } 
 
-b_union:
-  | b1=b_union UNION b2=b_concat  { Union (b1, b2) }
-  | b=b_concat                    { b }
+command:
+  | CIRCUIT_BIND i=WORD COLON v=b_var ASSIGN b=bexp SEMI { Assign (i, b, v) }
+  | o=output SEMI                                       { o }
 
-b_concat:
-  | b1=b_concat CONCAT b2=b_assn      { Concat (b1, b2) }
-  | b=b_assn                          { b }
+output:
+  | OUTPUT c=circuit                 {  Output c }
+  | OUTPUT b=bexp                    { Output (Inline (b, "check")) }
 
-b_seq:
-  | a1=b_seq SEMI a2=b_assn { a1 @ a2 }
-  | b=b_assn    { b }
-
-b_assn:
-  | CIRCUIT_BIND v=b_var ASSIGN b=bexp { [Bexp (v, b)] }
-  | b=bexp { [Bexp ("check", b)] } 
+circuit:
+  | c1=circuit UNION c2=circuit  { Union (c1, c2) }
+  | c1=circuit CONCAT c2=circuit  { Concat (c1, c2) }
+  | c=WORD                        { Bound c }
 
 bexp:
-  | b=b_if { b } 
+  | IF g=bexp THEN b1=bexp ELSE b2=bexp   { Conditional(g, b1, b2) }
+  | b=b_main                                { b }
 
-b_if:
-  | IF g=b_if THEN b1=b_if ELSE b2=b_if   { Conditional(g, b1, b2) }
-  | b=b_o                                 { b }
+b_main:
+  | MINUS b=bexp                           { Neg(b) }
+  | NOT b=bexp                             { Not(b) }
+  | b=bop                                 { b }
+  | LPAREN b=bexp RPAREN                  { b }
+  | b=primitive                           { b }
 
-b_o:
-  | l=b_o LOR r=b_a                  { LOR(l, r) }
-  | b1=b_o COALESCE b2=b_a           { Conditional(b1, b1, b2) }
-  | b=b_a                            { b }
+%inline bop:
+  | b1=bexp LOR b2=bexp              { LOR(b1, b2) }
+  | b1=bexp LAND b2=bexp             { LAND(b1, b2) }
+  | b1=bexp COALESCE b2=bexp         { Conditional(b1, b1, b2) }
+  | b1=bexp OR b2=bexp               { OR(b1, b2) }
+  | b1=bexp XOR b2=bexp              { XOR(b1, b2) }
+  | b1=bexp AND b2=bexp              { AND(b1, b2) }
+  | b1=bexp EQ b2=bexp               { Eq(b1, b2) }
+  | b1=bexp NEQ b2=bexp              { Neq(b1, b2) }
+  | b1=bexp LEQ b2=bexp              { Not(XOR (BOOL b1, BOOL b2)) }
+  | b1=bexp LNEQ b2=bexp             { XOR((BOOL b1, BOOL b2)) }
+  | b1=bexp LT b2=bexp               { Lt(b1, b2) }
+  | b1=bexp GT b2=bexp               { Gt(b1, b2) }
+  | b1=bexp LTE b2=bexp              { Lte(b1, b2) } 
+  | b1=bexp GTE b2=bexp              { Gte(b1, b2) }
+  | b1=bexp LSHIFT b2=bexp            { Lshift(b1, b2) }
+  | b1=bexp RSHIFT b2=bexp           { Rshift(b1, b2) }
+  | b1=bexp PLUS b2=bexp             { Plus(b1, b2) }
+  | b1=bexp MINUS b2=bexp            { Minus(b1, b2) }
+  | b1=bexp MUL b2=bexp              { Mul(b1, b2) } 
+  | b1=bexp DIV b2=bexp              { Div(b1, b2) }
+  | b1=bexp MOD b2=bexp              { Mod(b1, b2) } 
+  | b1=bexp EXP b2=bexp              { Exp(b1, b2) } 
 
-b_a:
-  | l=b_a LAND r=b1     { LAND(l, r) }
-  | b=b1               { b }
-
-b1:
-  | l=b1 OR r=b2       { OR(l, r) }
-  | b=b2               { b }
-
-b2:
-  | l=b2 XOR r=b3      { XOR(l, r) }
-  | b=b3               { b }
-
-b3:
-  | l=b3 AND r=b4      { AND(l, r) }
-  | b=b4               { b }
-
-b4:
-  | l=b4 EQ r=b5       { Eq(l, r) }
-  | l=b4 NEQ r=b5      { Neq(l, r) }
-  | l=b4 LEQ r=b5      { Not(XOR (BOOL l, BOOL r)) }
-  | l=b4 LNEQ r=b5     { XOR((BOOL l, BOOL r)) }
-  | b=b5               { b }
-
-b5:
-  | l=b5 LT r=b6       { Lt(l, r) }
-  | l=b5 GT r=b6       { Gt(l, r) }
-  | l=b5 LTE r=b6      { Lte(l, r) }
-  | l=b5 GTE r=b6      { Gte(l, r) }
-  | b=b6               { b }
-
-b6:
-  | l=b6 LSHIFT r=b7   { Lshift(l, r) }
-  | l=b6 RSHIFT r=b7   { Rshift(l, r) }
-  | b=b7               { b }
-
-b7:
-  | l=b7 PLUS r=b8     { Plus(l, r) }
-  | l=b7 MINUS r=b8    { Minus(l, r) }
-  | b=b8               { b }
-
-b8:
-  | l=b8 MUL r=b9      { Mul(l, r) }
-  | l=b8 DIV r=b9      { Div(l, r) }
-  | l=b8 MOD r=b9      { Mod(l, r) }
-  | b=b9               { b }
-
-b9:
-  | l=b10 EXP r=b9     { Exp(l, r) }
-  | b=b10              { b }
-
-b10: 
-  | MINUS b=b10        { Neg(b) }
-  | NOT b=b10          { Not(b) }
-  | b=b11        { b }
-
-b11: 
-  | LPAREN b=b_if RPAREN                     { b }
-  | b=b12                                    { b }
-
-b12:
+%inline primitive:
   | l=LIT   { Lit l }
   | x=VAR   { Var x }
 
-b_var:
+%inline b_var:
   | x=VAR   { x } 

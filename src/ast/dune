@@ -1,5 +1,5 @@
 (library
  (name ast)
- (modules bexp ctree)
+ (modules bexp ctree command)
  (libraries core_kernel)
 )
