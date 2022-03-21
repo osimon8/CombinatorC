@@ -46,8 +46,8 @@ open Compiler.Directive;;
 %token COLON
 %token COALESCE
 
-%token DIRECTIVE
-%token <string> WORD
+%token <string * string> DIRECTIVE
+%token <string> IDENT
 
 %token UNION
 %token CONCAT
@@ -102,10 +102,10 @@ dir_seq:
   | d=directive               { d }
 
 directive:
-  | DIRECTIVE d=WORD a=WORD   { [parse_directive d a] } 
+  | d=DIRECTIVE   { [parse_directive (fst d) (snd d)] } 
 
 command:
-  | CIRCUIT_BIND i=WORD COLON v=b_var ASSIGN b=bexp SEMI { Assign (i, b, v) }
+  | CIRCUIT_BIND i=IDENT COLON v=b_var ASSIGN b=bexp SEMI { Assign (i, b, v) }
   | o=output SEMI                                       { o }
 
 output:
@@ -115,7 +115,7 @@ output:
 circuit:
   | c1=circuit UNION c2=circuit  { Union (c1, c2) }
   | c1=circuit CONCAT c2=circuit  { Concat (c1, c2) }
-  | c=WORD                        { Bound c }
+  | c=IDENT                        { Bound c }
 
 bexp:
   | IF g=bexp THEN b1=bexp ELSE b2=bexp   { Conditional(g, b1, b2) }

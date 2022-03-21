@@ -69,11 +69,13 @@ let fast filename : parse_result =
   | d, a ->
     Success (d, a)
 
+  | exception Lexer.Lexer_error msg ->
+    prerr_endline msg; exit 1
+
   | exception DirectiveError msg -> 
     eprintf "Directive Error: %s\n" msg; exit 1 
 
-  | exception Lexer.Lexer_error msg ->
-    prerr_endline msg; exit 1
+
     
   | exception Parser.Error ->
     Error text
@@ -83,5 +85,5 @@ let parse (filename: string) : directive list * command list =
   (* First try fast parser, then use slow parser to generate error if fail *)
   begin match fast filename with 
   | Success (d, a) -> (d, a) 
-  | Error s -> slow filename s
+  | Error s -> try slow filename s with Lexer.Lexer_error msg -> prerr_endline msg; exit 1
   end
