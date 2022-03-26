@@ -11,15 +11,17 @@
     raise (Lexer_error (
         Printf.sprintf "Unexpected character at line %d, character %d: '%c'" l o c))
   let reserved_words = [
-  ( "output", OUTPUT);
+  ("output", OUTPUT);
   ("if", IF);
   ("then", THEN);
   ("else", ELSE);
   ("true", LIT 1l);
   ("false", LIT 0l);
-  ( "circuit", CIRCUIT_BIND);
+  ("circuit", CIRCUIT_BIND);
+  ("at", AT);
 
   ( ";", SEMI);
+  ( ",", COMMA);
   ( ":", COLON);
   ( "+", PLUS);
   ( "-", MINUS);
@@ -123,6 +125,7 @@ rule token = parse
   | ':'              
   | "??"       
   | '!'  
+  | ','
   | '='
   | "\\/"       
   | "@"         { token_lookup lexbuf }

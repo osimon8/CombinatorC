@@ -10,6 +10,10 @@ open Ast.Command
 open Composition
 open Directive
 
+type compiled_circuit = 
+| Abstract of circuit
+| Concrete of concrete_circuit
+
 let json_of_symbol s = 
   `Assoc [("type", `String "virtual"); ("name", `String ("signal-" ^ s))]
 
@@ -128,6 +132,16 @@ let json_of_circuits (circuits: circuit list) : json list =
   let remapped = remap_ids_concrete wrapped in 
   List.concat_map json_of_circuit remapped 
 
+let json_of_compiled_circuits (circuits: compiled_circuit list) : json list = 
+  let abstract, concrete = List.partition (fun c -> match c with | Abstract _ -> true | _ -> false) circuits in 
+  let abstract = List.map (fun c -> match c with | Abstract c -> c | _ -> failwith "impossible") abstract in 
+  let layouts = layout_circuits abstract in 
+  let concrete_layouts = List.map (fun c -> match c with | Concrete c -> c | _ -> failwith "impossible") concrete in 
+  let concrete_circuits = List.combine abstract layouts @ concrete_layouts  in
+  let wrapped = List.map wrap_io concrete_circuits in 
+  let remapped = remap_ids_concrete wrapped in 
+  List.concat_map json_of_circuit remapped 
+
 let compile_bexp_to_circuit ?optimize:(optimize=true) (o_sig:symbol) (b: bexp) : circuit = 
   let circuit = circuit_of_bexp o_sig b in 
     if optimize then 
@@ -141,23 +155,77 @@ let json_of_bexp ?optimize:(optimize=true) (o_sig:symbol) (b: bexp) : json list 
   json_of_circuits [circuit]
 
 
-let compile_ctree_to_circuit ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (lookup: string -> ctree) (ctree:ctree) : circuit = 
+let compile_ctree_to_circuit ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (lookup: string -> ctree) (ctree:ctree) : compiled_circuit = 
   let w o_sig bexp = let ast = 
                 if optimize_b then optimize_bexp bexp else bexp in 
               compile_bexp_to_circuit ~optimize o_sig ast in 
-  
-  let rec f ctree = 
+
+  let bind circuit loc =
+    begin match loc with 
+    | Some l -> Concrete (circuit, layout ~pos:(l) circuit)
+    | None -> Abstract circuit
+  end in
+
+  let rec r ctree = 
+    let comp f c1 c2 loc = 
+      let c1 = r c1 in 
+      let c2 = r c2 in 
+      let o = 
+        begin match loc with 
+        | Some l -> l 
+        | None -> get_origin ()
+      end in 
+
+      let x c1 c2 rev = 
+        let c2, c2_layout = c2 in 
+        let p2, s2, pl2 = c2_layout in 
+        let o2 = offset o p2 in 
+        let p2, s2, pl2 = move_layout c2_layout o2 in 
+
+        let l1 = layout c1 in
+        let p1, s1, _ = l1 in 
+        let mv = if rev then (float_of_int (-(fst s1) - 2), 0.) else (float_of_int (fst (s2) + 2), 0.) in 
+        let o1 = offset (offset o p1) mv in 
+        let p1, s1, pl1 = move_layout l1 o1 in
+
+        let c = if rev then f c2 c1 else f c1 c2 in
+        Concrete (c, (o, (fst s1 + fst s2 + 2, snd s1 + snd s2), if rev then pl2 @ pl1 else pl1 @ pl2))
+      in 
+
+
+      begin match c1, c2 with 
+      | Abstract c1, Abstract c2 -> 
+          let c = f c1 c2 in 
+          begin match loc with
+          | Some pos -> Concrete (c, layout ~pos c)
+          | None -> Abstract c
+          end 
+      | Abstract c1, Concrete c2 -> x c1 c2 false
+      | Concrete c1, Abstract c2 -> x c2 c1 true
+      | Concrete c1, Concrete c2 -> 
+        let c1, c1_layout = c1 in 
+        let c2, c2_layout = c2 in 
+        let p1, _, _ = c1_layout in 
+        let p2, _, _ = c2_layout in 
+        let o1 = offset o p1 in 
+        let o2 = offset o p2 in 
+        let p1, s1, pl1 = move_layout c1_layout o1 in 
+        let p2, s2, pl2 = move_layout c2_layout o2 in
+        let c = f c1 c2 in 
+        Concrete (c, (o, (max (fst s1) (fst s2), max (snd s1) (snd s2)), pl1 @ pl2))
+    end in 
+
     begin match ctree with 
-    | Inline (b, o_sig) -> w o_sig b 
-    | Bound s -> f (lookup s)
-    | Union (b1, b2) -> circuit_union (f b1) (f b2)
-    | Concat (b1, b2) -> circuit_concat (f b1) (f b2)
+    | Inline (b, o_sig, loc) -> bind (w o_sig b) loc 
+    | Bound (s, loc) -> r (lookup s)
+    | Union (b1, b2, loc) -> comp circuit_concat b1 b2 loc 
+    | Concat (b1, b2, loc) -> comp circuit_concat b1 b2 loc
   end in 
 
-  let circuit = f ctree in 
+  let circuit = r ctree in 
   circuit 
 
-let compile_commands_to_circuits ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (commands: command list) : circuit list = 
+let compile_commands_to_circuits ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (commands: command list) : compiled_circuit list = 
   let table = ref [] in 
 
   let lookup ident =
@@ -169,13 +237,14 @@ let compile_commands_to_circuits ?optimize_b:(optimize_b=true) ?optimize:(optimi
   inter !table in 
 
   let register ident b o_sig = 
-    table := (ident, Inline (b, o_sig)) :: !table
+    table := (ident, Inline (b, o_sig, None)) :: !table
   in
 
   let compile command = 
     begin match command with 
     | Assign (ident, b, o_sig) -> register ident b o_sig; None
     | Output c -> Some (compile_ctree_to_circuit ~optimize_b ~optimize lookup c)
+    | OutputAt (c, loc) -> Some (compile_ctree_to_circuit ~optimize_b ~optimize lookup (bind_loc c loc))
     end 
   in
 

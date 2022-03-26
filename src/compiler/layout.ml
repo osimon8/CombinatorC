@@ -6,6 +6,14 @@ open Config
 type grid = bool array array 
 type placement = float * float
 
+let origin = ref (0., 0.)
+
+let get_origin () = 
+  !origin
+
+let set_origin new_o = 
+  origin := new_o
+
 type circuit_layout = placement * size * placement list 
 
 type concrete_circuit = circuit * circuit_layout
@@ -22,6 +30,16 @@ let string_of_placement p =
   "(" ^ (string_of_float x) ^ ", " ^ (string_of_float y) ^ ")"
 
 let conn_length = 9 
+
+let offset (origin:placement) (off:placement) : placement = 
+  let x, y = origin in 
+  let ox, oy = off in 
+  (ox +. x, oy +. oy) 
+
+let move_layout (l:circuit_layout) (new_p:placement) : circuit_layout = 
+  let p, s, pl = l in 
+  let pl = List.map (offset new_p) pl in 
+  new_p, s, pl 
 
 let (+~) x y = Float.add x (float_of_int y)
 let (+~~) x y = Float.add (float_of_int x) y
@@ -148,8 +166,18 @@ let layout_naive (c:circuit) : placement list =
   let placements = List.fold_left internal [] combs in 
   List.rev placements
 
-let layout ?pos:(pos=(0.,0.)) f (c:circuit) : circuit_layout = 
-  let placements = f c in 
+let get_strategy () =   
+  let { layout=l } = get_config () in 
+  let strategy =
+    begin match l with 
+    | Identity -> layout_identity
+    | Naive -> layout_naive
+  end in
+  strategy
+
+let layout ?pos:(pos=(0.,0.)) (c:circuit) : circuit_layout = 
+  let strategy = get_strategy () in 
+  let placements = strategy c in 
   let ox, oy = pos in 
   let placements = List.map (fun (x, y) -> (x +. ox, y +. oy)) placements in
   let combs, _, _ = c in 
@@ -172,16 +200,8 @@ let layout ?pos:(pos=(0.,0.)) f (c:circuit) : circuit_layout =
   List.map (fun (c,p) -> let s = size_of_combinator c in center_of_size p s) zipped 
 
 let layout_circuits (circuits: circuit list) : circuit_layout list = 
-  let { layout=l } = get_config () in 
-  let strategy =
-    begin match l with 
-    | Identity -> layout_identity
-    | Naive -> layout_naive
-    end
-in
-
   let inter acc c =
-    let pos, size, placements = layout ~pos:(acc) strategy c in 
+    let pos, size, placements = layout ~pos:(acc) c in 
     let px, py = pos in 
     let sx, sy = size in 
     let sy = max 3 sy in 

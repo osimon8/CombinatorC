@@ -53,6 +53,8 @@ open Compiler.Directive;;
 %token CONCAT
 
 %token OUTPUT
+%token AT 
+%token COMMA
 
 %token <string> VAR
 %token <int32> LIT
@@ -109,13 +111,17 @@ command:
   | o=output SEMI                                       { o }
 
 output:
-  | OUTPUT c=circuit                 {  Output c }
-  | OUTPUT b=bexp                    { Output (Inline (b, "check")) }
+  | OUTPUT c=circuit                                        { Output c }
+  | OUTPUT b=bexp                                           { Output (Inline (b, "check", None)) }
+  | OUTPUT c=circuit AT LPAREN v1=LIT COMMA v2=LIT RPAREN   { OutputAt (c, (Int32.to_float v1, Int32.to_float v2)) }
+  | OUTPUT b=bexp AT LPAREN v1=LIT COMMA v2=LIT RPAREN      { let loc = (Int32.to_float v1, Int32.to_float v2) in OutputAt (Inline (b, "check", Some loc), loc) }
 
 circuit:
-  | c1=circuit UNION c2=circuit  { Union (c1, c2) }
-  | c1=circuit CONCAT c2=circuit  { Concat (c1, c2) }
-  | c=IDENT                        { Bound c }
+  | c1=circuit UNION c2=circuit    { Union (c1, c2, None) }
+  | c1=circuit CONCAT c2=circuit   { Concat (c1, c2, None) }
+  | c=IDENT                        { Bound (c, None) }
+  | LPAREN c=circuit RPAREN        { c }
+
 
 bexp:
   | IF g=bexp THEN b1=bexp ELSE b2=bexp   { Conditional(g, b1, b2) }
