@@ -34,6 +34,7 @@ open Compiler.Directive;;
 %token LPAREN
 %token RPAREN
 
+%token CONCRETE
 %token CIRCUIT_BIND
 %token ASSIGN
 %token SEMI
@@ -107,7 +108,8 @@ directive:
   | d=DIRECTIVE   { [parse_directive (fst d) (snd d)] } 
 
 command:
-  | CIRCUIT_BIND i=IDENT COLON v=b_var ASSIGN b=bexp SEMI { Assign (i, b, v) }
+  | CONCRETE CIRCUIT_BIND i=IDENT COLON v=b_var ASSIGN b=bexp SEMI { Assign (i, b, v, true) }
+  | CIRCUIT_BIND i=IDENT COLON v=b_var ASSIGN b=bexp SEMI { Assign (i, b, v, false) }
   | o=output SEMI                                       { o }
 
 output:

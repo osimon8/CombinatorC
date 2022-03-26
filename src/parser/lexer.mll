@@ -17,6 +17,7 @@
   ("else", ELSE);
   ("true", LIT 1l);
   ("false", LIT 0l);
+  ("concrete", CONCRETE);
   ("circuit", CIRCUIT_BIND);
   ("at", AT);
 

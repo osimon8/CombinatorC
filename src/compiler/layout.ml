@@ -34,12 +34,12 @@ let conn_length = 9
 let offset (origin:placement) (off:placement) : placement = 
   let x, y = origin in 
   let ox, oy = off in 
-  (ox +. x, oy +. oy) 
+  (ox +. x, oy +. y) 
 
 let move_layout (l:circuit_layout) (new_p:placement) : circuit_layout = 
   let p, s, pl = l in 
-  let pl = List.map (offset new_p) pl in 
-  new_p, s, pl 
+  let pl2 = List.map (offset new_p) pl in 
+  new_p, s, pl2 
 
 let (+~) x y = Float.add x (float_of_int y)
 let (+~~) x y = Float.add (float_of_int x) y

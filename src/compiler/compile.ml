@@ -162,7 +162,7 @@ let compile_ctree_to_circuit ?optimize_b:(optimize_b=true) ?optimize:(optimize=t
 
   let bind circuit loc =
     begin match loc with 
-    | Some l -> Concrete (circuit, layout ~pos:(l) circuit)
+    | Some pos -> Concrete (circuit, layout ~pos circuit)
     | None -> Abstract circuit
   end in
 
@@ -176,19 +176,35 @@ let compile_ctree_to_circuit ?optimize_b:(optimize_b=true) ?optimize:(optimize=t
         | None -> get_origin ()
       end in 
 
+      print_endline (Printf.sprintf "o: (%f, %f)" (fst o) (snd o));
+
       let x c1 c2 rev = 
         let c2, c2_layout = c2 in 
         let p2, s2, pl2 = c2_layout in 
+              print_endline (Printf.sprintf "p2: (%f, %f)" (fst p2) (snd p2));
+
+        print_endline @@ string_of_layout c2_layout;
         let o2 = offset o p2 in 
+              print_endline (Printf.sprintf "o2: (%f, %f)" (fst o2) (snd o2));
+
+        let l2 = move_layout c2_layout o2 in 
+          print_endline @@ string_of_layout l2;
+
         let p2, s2, pl2 = move_layout c2_layout o2 in 
+        
 
         let l1 = layout c1 in
         let p1, s1, _ = l1 in 
         let mv = if rev then (float_of_int (-(fst s1) - 2), 0.) else (float_of_int (fst (s2) + 2), 0.) in 
         let o1 = offset (offset o p1) mv in 
         let p1, s1, pl1 = move_layout l1 o1 in
+              print_endline (Printf.sprintf "o1: (%f, %f)" (fst o1) (snd o1));
+
 
         let c = if rev then f c2 c1 else f c1 c2 in
+        let o = if rev then p1 else p2 in 
+                      print_endline (Printf.sprintf "new o: (%f, %f)" (fst o) (snd o));
+
         Concrete (c, (o, (fst s1 + fst s2 + 2, snd s1 + snd s2), if rev then pl2 @ pl1 else pl1 @ pl2))
       in 
 
@@ -236,13 +252,13 @@ let compile_commands_to_circuits ?optimize_b:(optimize_b=true) ?optimize:(optimi
     end in 
   inter !table in 
 
-  let register ident b o_sig = 
-    table := (ident, Inline (b, o_sig, None)) :: !table
+  let register ident b o_sig concrete = 
+    table := (ident, Inline (b, o_sig, if concrete then Some (get_origin ()) else None)) :: !table
   in
 
   let compile command = 
     begin match command with 
-    | Assign (ident, b, o_sig) -> register ident b o_sig; None
+    | Assign (ident, b, o_sig, concrete) -> register ident b o_sig concrete; None
     | Output c -> Some (compile_ctree_to_circuit ~optimize_b ~optimize lookup c)
     | OutputAt (c, loc) -> Some (compile_ctree_to_circuit ~optimize_b ~optimize lookup (bind_loc c loc))
     end 
