@@ -61,10 +61,12 @@ let rec calculate_signals_on_wire (c:circuit) (color:wire_color) (conn:connectio
         | Decider (_, (o1, _, o2, _, _)) -> acc @ map_dop conn o1 @ map_dop conn o2
         | _ -> failwith err 
         end  
+    | L id 
     | Dout id -> 
         let comb =  ~!id in 
         begin match comb with 
         | Decider (_, (_, _, _, o, _)) -> acc @ map_dop conn o
+        | Lamp (_, (_, _, o)) -> acc @ map_dop conn o
         | _ -> failwith err 
         end  
     | C id -> 
@@ -109,7 +111,7 @@ let wrap_io (circ:concrete_circuit) : concrete_circuit =
   let has_input = List.length i_sigs > 0 in 
 
   let inp_id = get_entity_id () in
-  let i_pole = Pole (inp_id) in 
+  let i_pole = Pole (inp_id, Substation) in 
 
   let ox, oy = origin in
   let sx, sy = size in 
@@ -128,7 +130,7 @@ let wrap_io (circ:concrete_circuit) : concrete_circuit =
             else [i_pole], [i_pole_placement] in
 
   let oid = get_entity_id () in 
-  let o_pole = Pole (oid) in
+  let o_pole = Pole (oid, Substation) in
   let o_placement = (ox +. float_of_int (sx + 1), y_level) in  
 
   let wire_out i = connect_primary g (o_conn_of_id combs i) (P oid) in
@@ -239,6 +241,7 @@ let remap_ids ?reset_ctr:(reset_ctr=true) (circuits:circuit list) : circuit list
       | Din i -> Din id
       | Dout i -> Dout id
       | C i -> C id
+      | L i -> L id
       | P i -> P id
       end in
 
@@ -247,7 +250,8 @@ let remap_ids ?reset_ctr:(reset_ctr=true) (circuits:circuit list) : circuit list
                                           | Arithmetic (_, cfg) -> Arithmetic (i, cfg)
                                           | Decider (_, cfg) -> Decider (i, cfg)
                                           | Constant (_, cfg) -> Constant (i, cfg)
-                                          | Pole _ -> Pole i
+                                          | Lamp (_, cfg) -> Lamp (i, cfg)
+                                          | Pole (_, t) -> Pole (i, t)
                                           end) combs in 
 
     let m_id = List.fold_left (fun acc (_, i) -> max acc i) (-1) id_map in

@@ -57,26 +57,42 @@ type decider_config = dop * decider_op * dop * dop * decider_output_type
 
 type constant_config = signal
 
+type lamp_config = dop * decider_op * dop 
+
 type cfg = 
 | A of arithemtic_config 
 | D of decider_config 
 | C of constant_config
+| L of lamp_config
 
 type arithmetic_combinator = id * arithemtic_config
 type decider_combinator = id * decider_config
+
+type pole_type = 
+| Small 
+| Medium 
+| Big 
+| Substation
 
 type combinator = 
  | Arithmetic of arithmetic_combinator
  | Decider of decider_combinator
  | Constant of id * constant_config
- | Pole of id
+ | Lamp of id * lamp_config
+ | Pole of id * pole_type
 
 let size_of_combinator (comb:combinator) : size = 
  begin match comb with 
  | Arithmetic _  
  | Decider _ -> (1, 2)
  | Constant _ -> (1, 1)
- | Pole _ -> (2, 2) (* TODO: handle other size poles? *)
+ | Lamp _ -> (1, 1)
+ | Pole (_, t) -> begin match t with 
+                  | Small -> (1, 1)
+                  | Medium -> (1, 1)
+                  | Big -> (2, 2)
+                  | Substation -> (2, 2)
+                  end 
 end
 
 let id_of_combinator (comb:combinator) : id = 
@@ -84,7 +100,8 @@ let id_of_combinator (comb:combinator) : id =
   | Arithmetic (id, _) -> id 
   | Decider (id, _) -> id
   | Constant (id, _) -> id
-  | Pole id -> id
+  | Lamp (id, _) -> id
+  | Pole (id, _) -> id
   end
 
 (* let input_signals_of_combinator (comb:combinator) : op list = 
@@ -111,9 +128,10 @@ let uses_signal (comb:combinator) (s:symbol) : bool =
     end in 
 
   begin match comb with 
-  | Arithmetic (id, (op1, _, op2, _)) -> aop_uses op1 || aop_uses op2
-  | Decider (id, (op1, _, op2, op3, t)) -> dop_uses op1 true t || dop_uses op2 true t || dop_uses op3 false t
+  | Arithmetic (_, (op1, _, op2, _)) -> aop_uses op1 || aop_uses op2
+  | Decider (_, (op1, _, op2, op3, t)) -> dop_uses op1 true t || dop_uses op2 true t || dop_uses op3 false t
   | Constant (_, sigs) -> List.mem s (List.map fst sigs)  
+  | Lamp (_, (op1, _, op2)) -> dop_uses op1 true One || dop_uses op2 true One 
   | Pole _ -> false 
   end 
 
@@ -138,6 +156,7 @@ let uses_signal_in_input (comb:combinator) (s:symbol) : bool =
   | Arithmetic (id, (op1, _, op2, _)) -> aop_uses op1 || aop_uses op2
   | Decider (id, (op1, _, op2, op3, t)) -> dop_uses op1 || dop_uses op2
   | Constant (_, sigs) -> List.mem s (List.map fst sigs)  
+  | Lamp (_, (op1, _, op2)) -> dop_uses op1 || dop_uses op2  
   | Pole _ -> false 
   end 
 
@@ -161,6 +180,7 @@ let uses_wildcard (comb:combinator) : bool =
   | Arithmetic (id, (op1, _, op2, op3)) -> aop_uses op1 || aop_uses op2 || aop_uses op3
   | Decider (id, (op1, _, op2, op3, t)) -> dop_uses op1 || dop_uses op2  || dop_uses op3 
   | Constant (_, sigs) -> false
+  | Lamp (_, (op1, _, op2)) -> dop_uses op1 || dop_uses op2  
   | Pole _ -> false 
   end 
 
@@ -224,5 +244,13 @@ let string_of_combinator (comb:combinator) : string =
   | Arithmetic (id, _) -> "Arithmetic: " ^ string_of_int id
   | Decider (id, _) -> "Decider: " ^ string_of_int id
   | Constant (id, _) -> "Constant: " ^ string_of_int id
-  | Pole id -> "Pole: " ^ string_of_int id
+  | Lamp (id, _) -> "Lamp: " ^ string_of_int id
+  | Pole (id, t) -> 
+    begin match t with 
+    | Small -> "Small Electric Pole: " 
+    | Medium -> "Medium Electric Pole: "
+    | Big -> "Big Electric Pole: "
+    | Substation -> "Substation: "
+    end 
+    ^ string_of_int id
 end

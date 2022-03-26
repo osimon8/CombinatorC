@@ -11,6 +11,7 @@ type connection =
   | Din of id
   | Dout of id
   | C of id
+  | L of id
   | P of id
 
 module Node = struct                                                                
@@ -59,6 +60,7 @@ let id_of_conn conn : id =
   | Din id
   | Dout id
   | C id
+  | L id
   | P id -> id
 end
 
@@ -69,6 +71,7 @@ let opposite_conn conn : connection =
   | Din id -> Dout id 
   | Dout id -> Din id
   | C _ 
+  | L _
   | P _ -> conn
 end
 (* id used by Factorio in circuit id in JSON representation *)
@@ -77,6 +80,7 @@ let type_id_of_conn conn =
   | Ain _
   | Din _
   | C _
+  | L _ 
   | P _ -> 1
   | Aout _
   | Dout _ -> 2
@@ -89,6 +93,7 @@ let string_of_conn conn =
   | Din id -> "(Din " ^ string_of_int id ^ ")"
   | Dout id -> "(Dout " ^ string_of_int id ^ ")"
   | C id -> "(C " ^ string_of_int id ^ ")"
+  | L id -> "(L " ^ string_of_int id ^ ")"
   | P id -> "(P " ^ string_of_int id ^ ")"
 end
 

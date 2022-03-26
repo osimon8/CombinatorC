@@ -42,6 +42,16 @@ let json_of_config (cfg:cfg) : string * json =
     end
   in 
 
+  let parse_lo (pre:string) (o:dop) i = 
+    begin match o with 
+    | Const c -> if i <> 1 then failwith "illegal argument to lamp"
+                else ("constant", json_of_value c)
+    | Symbol s -> mk_sig pre s
+    | Each -> failwith "illegal argument to lamp"
+    | Anything -> mk_sig pre "anything"
+    | Everything -> mk_sig pre "everything"
+    end in
+
   let c_map (i:int) (data:data) =  
     let s, v = data in
     `Assoc [("signal", json_of_symbol s); 
@@ -65,6 +75,9 @@ let json_of_config (cfg:cfg) : string * json =
                                     end))
                               )] 
   | C cfg -> [("filters", `List (List.mapi c_map cfg))]
+  | L (o1, op, o2) -> [("circuit_condition", `Assoc ([(parse_lo "first" o1 0); 
+                                                      (parse_lo "second" o2 1); 
+                                                      ("comparator", `String (string_of_decider_op op))]))]
   end))
 
 let json_of_conn = 
@@ -95,7 +108,14 @@ let json_of_combinator (c: combinator) (g: connection_graph) (p:placement) : jso
  | Arithmetic (id, cfg) -> id, "arithmetic-combinator", [json_of_config (A cfg)]
  | Decider (id, cfg) ->  id, "decider-combinator", [json_of_config (D cfg)]
  | Constant (id, cfg) -> id, "constant-combinator", [json_of_config (C cfg)]
- | Pole id -> id, "substation", [] (* small-electric-pole*)
+ | Lamp (id, cfg) -> id, "small-lamp", [] 
+ | Pole (id, t) -> id, 
+    begin match t with 
+    | Small -> "small-electric-pole"
+    | Medium -> "medium-electric-pole"
+    | Big -> "big-electric-pole"
+    | Substation -> "substation"
+    end, [] 
   end in 
 
   let joc label clist = 
@@ -108,6 +128,7 @@ let json_of_combinator (c: combinator) (g: connection_graph) (p:placement) : jso
  | Arithmetic _ -> `Assoc (joc "1" (succs g (Ain id)) @ joc "2" (succs g (Aout id)))
  | Decider _ ->  `Assoc (joc "1" (succs g (Din id)) @ joc "2" (succs g (Dout id)))
  | Constant _-> `Assoc (joc "1" (succs g (C id)))
+ | Lamp _ -> `Assoc (joc "1" (succs g (L id)))
  | Pole _ -> `Assoc (joc "1" (succs g (P id)))
   end 
   )] in 
@@ -175,35 +196,20 @@ let compile_ctree_to_circuit ?optimize_b:(optimize_b=true) ?optimize:(optimize=t
         | Some l -> l 
         | None -> get_origin ()
       end in 
-
-      print_endline (Printf.sprintf "o: (%f, %f)" (fst o) (snd o));
-
       let x c1 c2 rev = 
         let c2, c2_layout = c2 in 
         let p2, s2, pl2 = c2_layout in 
-              print_endline (Printf.sprintf "p2: (%f, %f)" (fst p2) (snd p2));
-
-        print_endline @@ string_of_layout c2_layout;
         let o2 = offset o p2 in 
-              print_endline (Printf.sprintf "o2: (%f, %f)" (fst o2) (snd o2));
-
-        let l2 = move_layout c2_layout o2 in 
-          print_endline @@ string_of_layout l2;
-
         let p2, s2, pl2 = move_layout c2_layout o2 in 
-        
 
         let l1 = layout c1 in
         let p1, s1, _ = l1 in 
         let mv = if rev then (float_of_int (-(fst s1) - 2), 0.) else (float_of_int (fst (s2) + 2), 0.) in 
         let o1 = offset (offset o p1) mv in 
         let p1, s1, pl1 = move_layout l1 o1 in
-              print_endline (Printf.sprintf "o1: (%f, %f)" (fst o1) (snd o1));
-
 
         let c = if rev then f c2 c1 else f c1 c2 in
         let o = if rev then p1 else p2 in 
-                      print_endline (Printf.sprintf "new o: (%f, %f)" (fst o) (snd o));
 
         Concrete (c, (o, (fst s1 + fst s2 + 2, snd s1 + snd s2), if rev then pl2 @ pl1 else pl1 @ pl2))
       in 

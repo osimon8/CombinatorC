@@ -9,7 +9,8 @@ let lookup (combs:combinator list) (id:id)  : combinator =
 
 let conns_of_comb (c: combinator) : connection list = 
   begin match c with 
-    | Pole i -> [ P i ]
+    | Lamp (i, _) -> [ L i ]
+    | Pole (i, _) -> [ P i ]
     | Constant (i, _) -> [ C i ]
     | Arithmetic (i, _) -> [ Ain i; Aout i] 
     | Decider (i, _) -> [ Din i; Dout i ]
@@ -21,6 +22,7 @@ let i_conn_of_id (combs: combinator list) (id:id) : connection =
   | Decider _ -> Din id 
   | Constant _ -> C id 
   | Pole _ -> P id 
+  | Lamp _ -> L id
   end
 
 let o_conn_of_id (combs: combinator list) (id:id) : connection =
@@ -29,6 +31,7 @@ let o_conn_of_id (combs: combinator list) (id:id) : connection =
   | Decider _ -> Dout id 
   | Constant _ -> C id 
   | Pole _ -> P id 
+  | Lamp _ -> L id
   end
   let sig_list = 
   ["0"; "1"; "2"; "3"; "4"; "5"; "6"; "7"; "8"; "9"; 
