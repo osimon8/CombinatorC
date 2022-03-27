@@ -75,7 +75,6 @@ open Compiler.Directive;;
 %left MUL DIV MOD 
 %right EXP  
 
-
 %nonassoc NOT 
 
 %left UNION 
@@ -110,7 +109,7 @@ directive:
 command:
   | CONCRETE CIRCUIT_BIND i=IDENT COLON v=b_var ASSIGN b=bexp SEMI { CircuitBind (i, b, v, true) }
   | CIRCUIT_BIND i=IDENT COLON v=b_var ASSIGN b=bexp SEMI          { CircuitBind (i, b, v, false) }
-  | CIRCUIT_BIND i=IDENT ASSIGN e=expression SEMI                  { Assign (i, TCircuit, e) }
+  | CIRCUIT_BIND i=IDENT ASSIGN c=circuit SEMI                     { Assign (i, TCircuit, Circuit c) }
   | o=output SEMI                                                  { o }
 
 output:
@@ -143,8 +142,8 @@ bexp:
   | b=b_main                                { b }
 
 b_main:
-  | MINUS b=bexp                          { Neg(b) }
   | NOT b=bexp                            { Not(b) }
+  | MINUS b=bexp                          { Neg(b) }
   | b=bop                                 { b }
   | l=LIT                                 { Lit l }
   | x=VAR                                 { Var x }
