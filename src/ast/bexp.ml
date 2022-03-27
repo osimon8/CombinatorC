@@ -266,6 +266,18 @@ let optimize_bexp (b:bexp) : bexp =
   let rec opti b i = if i = 0 then b else let b1 = o b in opti b1 (i - 1)  in
   opti b passes
 
+let interpret_bexp bexp : int32 option = 
+  let vars = vars_in_bexp bexp in 
+  if List.length vars <> 0 then None else 
+  let rec inter b = 
+    begin match b with 
+    | Lit l -> Some l 
+    | _ -> inter (optimize_bexp b) 
+    end
+  in
+  inter bexp  
+
+
 let string_of_bexp (b : bexp) : string =
   let rec sobi first b =
     let sob = sobi false in

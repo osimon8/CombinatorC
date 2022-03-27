@@ -1,9 +1,10 @@
 open Bexp
-open Ctree
+open Expression
 
 type loc = (float * float) 
 
 type command = 
-| Assign of string * bexp * string * bool
-| Output of ctree
-| OutputAt of ctree * loc
+| CircuitBind of string * bexp * string * bool
+| Assign of string * var_type * expression
+| Output of expression
+| OutputAt of expression * loc

@@ -1,7 +1,7 @@
 %{
 open Ast.Bexp;;
-open Ast.Ctree;;
 open Ast.Command;;
+open Ast.Expression;;
 open Compiler.Directive;;
 %}
 
@@ -60,9 +60,6 @@ open Compiler.Directive;;
 %token <string> VAR
 %token <int32> LIT
 
-%left CONCAT 
-%left UNION 
-
 %nonassoc ELSE
 
 %left COALESCE
@@ -81,21 +78,24 @@ open Compiler.Directive;;
 
 %nonassoc NOT 
 
+%left UNION 
+%left CONCAT 
+
 %start toplevel
 
 %on_error_reduce program
 
 %type <directive list * command list> toplevel  
 %type <bexp> bexp
-%type <ctree> circuit
+%type <expression> expression
 %%
 
 toplevel:
   | p=program EOF { p }
 
 program:
-  | d=dir_seq b=c_seq  { (d, b) }
-  | b=c_seq             { ([], b) }
+  | d=dir_seq c=c_seq  { (d, c) }
+  | c=c_seq             { ([], c) }
 
 c_seq:
   | l=list(command) { l }
@@ -108,33 +108,47 @@ directive:
   | d=DIRECTIVE   { [parse_directive (fst d) (snd d)] } 
 
 command:
-  | CONCRETE CIRCUIT_BIND i=IDENT COLON v=b_var ASSIGN b=bexp SEMI { Assign (i, b, v, true) }
-  | CIRCUIT_BIND i=IDENT COLON v=b_var ASSIGN b=bexp SEMI { Assign (i, b, v, false) }
-  | o=output SEMI                                       { o }
+  | CONCRETE CIRCUIT_BIND i=IDENT COLON v=b_var ASSIGN b=bexp SEMI { CircuitBind (i, b, v, true) }
+  | CIRCUIT_BIND i=IDENT COLON v=b_var ASSIGN b=bexp SEMI          { CircuitBind (i, b, v, false) }
+  | CIRCUIT_BIND i=IDENT ASSIGN e=expression SEMI                  { Assign (i, TCircuit, e) }
+  | o=output SEMI                                                  { o }
 
 output:
-  | OUTPUT c=circuit                                        { Output c }
-  | OUTPUT b=bexp                                           { Output (Inline (b, "check", None)) }
-  | OUTPUT c=circuit AT LPAREN v1=LIT COMMA v2=LIT RPAREN   { OutputAt (c, (Int32.to_float v1, Int32.to_float v2)) }
-  | OUTPUT b=bexp AT LPAREN v1=LIT COMMA v2=LIT RPAREN      { let loc = (Int32.to_float v1, Int32.to_float v2) in OutputAt (Inline (b, "check", Some loc), loc) }
+  | OUTPUT c=circuit AT LPAREN v1=LIT COMMA v2=LIT RPAREN      { let loc = (Int32.to_float v1, Int32.to_float v2) in OutputAt ((Circuit c), loc) }
+  | OUTPUT c=circuit                                           { Output (Circuit c) }
+  | OUTPUT b=bexp AT LPAREN v1=LIT COMMA v2=LIT RPAREN      { let loc = (Int32.to_float v1, Int32.to_float v2) in OutputAt (expression_of_bexp b, loc) }
+  | OUTPUT b=bexp                                           { Output (expression_of_bexp b) }
 
 circuit:
   | c1=circuit UNION c2=circuit    { Union (c1, c2, None) }
   | c1=circuit CONCAT c2=circuit   { Concat (c1, c2, None) }
-  | c=IDENT                        { Bound (c, None) }
-  | LPAREN c=circuit RPAREN        { c }
+  | c=expression                   { Expression (c, None) }
+  | LPAREN c=circuit RPAREN          { c }
 
+arg: 
+  | e=expression                 { e }
+  | b=bexp                       { expression_of_bexp b }
+
+expression: 
+  // | b=bexp    { expression_of_bexp b }
+  | c=call    { c }
+  | i=IDENT   { Ast.Expression.Var i }
+  // | LPAREN e=expression RPAREN     { e }
+
+%inline call: 
+  | p=IDENT LPAREN args=separated_list(COMMA, arg) RPAREN { Call (p, args) }
 
 bexp:
-  | IF g=bexp THEN b1=bexp ELSE b2=bexp   { Conditional(g, b1, b2) }
+  | IF g=bexp THEN b1=bexp ELSE b2=bexp     { Conditional(g, b1, b2) }
   | b=b_main                                { b }
 
 b_main:
-  | MINUS b=bexp                           { Neg(b) }
-  | NOT b=bexp                             { Not(b) }
+  | MINUS b=bexp                          { Neg(b) }
+  | NOT b=bexp                            { Not(b) }
   | b=bop                                 { b }
+  | l=LIT                                 { Lit l }
+  | x=VAR                                 { Var x }
   | LPAREN b=bexp RPAREN                  { b }
-  | b=primitive                           { b }
 
 %inline bop:
   | b1=bexp LOR b2=bexp              { LOR(b1, b2) }
@@ -159,10 +173,6 @@ b_main:
   | b1=bexp DIV b2=bexp              { Div(b1, b2) }
   | b1=bexp MOD b2=bexp              { Mod(b1, b2) } 
   | b1=bexp EXP b2=bexp              { Exp(b1, b2) } 
-
-%inline primitive:
-  | l=LIT   { Lit l }
-  | x=VAR   { Var x }
 
 %inline b_var:
   | x=VAR   { x } 

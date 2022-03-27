@@ -1,4 +1,4 @@
-open Circuit
+open Ast.Circuit
 
 type layout_type = 
   | Identity

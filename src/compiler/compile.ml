@@ -1,18 +1,16 @@
-open Circuit
-open Combinator
+open Ast.Circuit
+open Ast.Combinator
 open Optimize
 open FirstPhase
 open Layout
 open Utils
 open Ast.Bexp
-open Ast.Ctree
 open Ast.Command
+open Ast.Expression
 open Composition
 open Directive
-
-type compiled_circuit = 
-| Abstract of circuit
-| Concrete of concrete_circuit
+open Pattern
+open Ctxt
 
 let json_of_symbol s = 
   `Assoc [("type", `String "virtual"); ("name", `String ("signal-" ^ s))]
@@ -108,7 +106,7 @@ let json_of_combinator (c: combinator) (g: connection_graph) (p:placement) : jso
  | Arithmetic (id, cfg) -> id, "arithmetic-combinator", [json_of_config (A cfg)]
  | Decider (id, cfg) ->  id, "decider-combinator", [json_of_config (D cfg)]
  | Constant (id, cfg) -> id, "constant-combinator", [json_of_config (C cfg)]
- | Lamp (id, cfg) -> id, "small-lamp", [] 
+ | Lamp (id, cfg) -> id, "small-lamp", [json_of_config (L cfg)] 
  | Pole (id, t) -> id, 
     begin match t with 
     | Small -> "small-electric-pole"
@@ -176,6 +174,38 @@ let json_of_bexp ?optimize:(optimize=true) (o_sig:symbol) (b: bexp) : json list 
   json_of_circuits [circuit]
 
 
+let evaluate_call (pattern:string) (args: (var_type * expression) list) : compiled_circuit = 
+  let p_args = Ctxt.lookup_pattern pattern in 
+  let lp = List.length p_args in 
+  let l = List.length args in 
+  if lp <> l then (prerr_endline @@ Printf.sprintf "Pattern \"%s\" expects %d arguments, got %d" pattern lp l; exit 1);
+  
+  let zipped = List.combine p_args args in 
+  let old_bindings = Ctxt.get () in 
+  List.iter (fun (p,a) -> 
+    let pty, pname = p in 
+    let aty, exp = a in 
+    if pty <> aty then (prerr_endline (Printf.sprintf "Pattern \"%s\" expects argument \"%s\" to have type \"%s\", but an argument of type \"%s\" was provided"  
+                                                      pattern pname (string_of_type pty) (string_of_type aty)); exit 1) 
+    else (Ctxt.add pname (pty, exp)) ) zipped; 
+  let circuit = evaluate_pattern pattern args in 
+  Ctxt.set old_bindings;
+  circuit 
+
+let interpret_types (exps: expression list) : (var_type * expression) list = 
+  let rec inter exp =
+    begin match exp with 
+    | Int _ -> TInt 
+    | Condition _ -> TCondition
+    | Signal _ -> TSignal
+    | Circuit _  
+    | Call _ -> TCircuit
+    | Pattern _ -> TPattern
+    | Var s -> let t, _ = Ctxt.lookup s in t 
+    end, exp
+  in 
+  List.map inter exps
+
 let compile_ctree_to_circuit ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (lookup: string -> ctree) (ctree:ctree) : compiled_circuit = 
   let w o_sig bexp = let ast = 
                 if optimize_b then optimize_bexp bexp else bexp in 
@@ -235,38 +265,72 @@ let compile_ctree_to_circuit ?optimize_b:(optimize_b=true) ?optimize:(optimize=t
         let p2, s2, pl2 = move_layout c2_layout o2 in
         let c = f c1 c2 in 
         Concrete (c, (o, (max (fst s1) (fst s2), max (snd s1) (snd s2)), pl1 @ pl2))
-    end in 
+    end 
+  in 
 
     begin match ctree with 
-    | Inline (b, o_sig, loc) -> bind (w o_sig b) loc 
-    | Bound (s, loc) -> r (lookup s)
-    | Union (b1, b2, loc) -> comp circuit_concat b1 b2 loc 
+    | Inline (b, o_sig, loc) -> bind (w o_sig b) loc
+    | Union (b1, b2, loc) -> comp circuit_union b1 b2 loc 
     | Concat (b1, b2, loc) -> comp circuit_concat b1 b2 loc
-  end in 
+    (* TODO: use loc *)
+    | Expression (e, loc) -> 
+        begin match e with
+        | Call (p, args) -> evaluate_call p (interpret_types args)
+        | Circuit c -> r c 
+        | Var v -> r (lookup v)
+        | Condition b -> r (Inline (b, "check", loc))
+        | Int i -> r (Inline (Lit i, "check", loc))
+        | Signal s -> r (Inline (Var s, s, loc))
+        | Pattern _ -> prerr_endline @@ "Can't output pattern! How did you manage to do this?"; exit 1
+        end 
+    end
+  
+  in 
 
   let circuit = r ctree in 
   circuit 
 
+let evaluate_expression ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (lookup: string -> ctree) exp loc : compiled_circuit =
+  let rec inter exp = 
+      begin match exp with 
+      | Call _ -> Expression (exp, loc)
+      | Signal s -> Inline (Var s, s, loc)
+      | Int i -> Inline (Lit i, "check", loc)
+      | Condition b -> Inline (b, "check", loc)
+      | Circuit c -> c
+      | Var v -> let ty, e = Ctxt.lookup v in 
+                begin match ty with 
+                | TPattern -> prerr_endline @@ "Can't output pattern :\"" ^ v ^"\""; exit 1
+                | _ -> inter e 
+                end 
+      | Pattern _ -> prerr_endline @@ "Can't output pattern! How did you manage to do this?"; exit 1
+      end in 
+  let ctree = inter exp in 
+  begin match loc with 
+  | Some loc -> compile_ctree_to_circuit ~optimize_b ~optimize lookup (bind_loc ctree loc)
+  | None -> compile_ctree_to_circuit ~optimize_b ~optimize lookup ctree 
+  end 
+
 let compile_commands_to_circuits ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (commands: command list) : compiled_circuit list = 
-  let table = ref [] in 
-
-  let lookup ident =
-    let rec inter table = 
-      begin match table with 
-      | [] -> prerr_endline @@ "Unknown circuit identifier: \"" ^ ident ^ "\""; exit 1 
-      | h :: tl -> let id, b = h in if id = ident then b else inter tl
-    end in 
-  inter !table in 
-
+  register_builtins ();
   let register ident b o_sig concrete = 
-    table := (ident, Inline (b, o_sig, if concrete then Some (get_origin ()) else None)) :: !table
+    Ctxt.add ident (TCircuit, Circuit (Inline (b, o_sig, if concrete then Some (get_origin ()) else None)))
   in
+
+  let lookup ident = begin match Ctxt.lookup ident with 
+                     | TCircuit, c -> begin match c with 
+                                      | Circuit c -> c 
+                                      | _ -> failwith "impossible"
+                                      end
+                     | _ -> prerr_endline @@ "Variable with identifier \"" ^ ident ^ "\" is not a circuit, cannot output"; exit 1
+                    end in
 
   let compile command = 
     begin match command with 
-    | Assign (ident, b, o_sig, concrete) -> register ident b o_sig concrete; None
-    | Output c -> Some (compile_ctree_to_circuit ~optimize_b ~optimize lookup c)
-    | OutputAt (c, loc) -> Some (compile_ctree_to_circuit ~optimize_b ~optimize lookup (bind_loc c loc))
+    | CircuitBind (ident, b, o_sig, concrete) -> register ident b o_sig concrete; None
+    | Assign (ident, ty, exp) -> Ctxt.add_no_dup ident (ty,exp); None
+    | Output e -> Some (evaluate_expression ~optimize_b ~optimize lookup e None)
+    | OutputAt (e, loc) -> Some (evaluate_expression ~optimize_b ~optimize lookup e (Some loc))
     end 
   in
 

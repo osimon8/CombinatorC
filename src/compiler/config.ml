@@ -1,5 +1,5 @@
 open Directive
-open Circuit
+open Ast.Circuit
 
 type compiler_config = { layout:layout_type; primary_color:wire_color }
 

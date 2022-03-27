@@ -39,6 +39,21 @@ type circuit_meta = id * (symbol list) * (symbol list) * (id list) * (id list)
 
 type circuit = combinator list * connection_graph * circuit_meta
 
+type placement = float * float
+type loc = placement option
+
+let origin = ref (0., 0.)
+
+let get_origin () = 
+  !origin
+
+let set_origin new_o = 
+  origin := new_o
+
+type circuit_layout = placement * size * placement list 
+
+type concrete_circuit = circuit * circuit_layout
+
 let entity_ctr = ref (create_ctr ())
 
 let get_entity_id () : id = 

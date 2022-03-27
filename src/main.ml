@@ -1,7 +1,7 @@
 open Utils
 open Parse
 open Ast.Bexp
-open Ast.Ctree
+open Ast.Expression
 open Encode
 open Compiler.Compile
 open Compiler.Config

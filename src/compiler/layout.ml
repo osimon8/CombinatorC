@@ -1,23 +1,10 @@
-open Circuit
-open Combinator
+open Ast.Circuit
+open Ast.Combinator
+open Ast.Expression
 open Array
 open Config
 
 type grid = bool array array 
-type placement = float * float
-
-let origin = ref (0., 0.)
-
-let get_origin () = 
-  !origin
-
-let set_origin new_o = 
-  origin := new_o
-
-type circuit_layout = placement * size * placement list 
-
-type concrete_circuit = circuit * circuit_layout
-
 let string_of_layout circuit_layout = 
   let (ox,oy), (sx, sy), _ = circuit_layout in 
   "Origin: (" ^ string_of_float ox ^ ", " ^ string_of_float oy ^ ") "
@@ -30,16 +17,6 @@ let string_of_placement p =
   "(" ^ (string_of_float x) ^ ", " ^ (string_of_float y) ^ ")"
 
 let conn_length = 9 
-
-let offset (origin:placement) (off:placement) : placement = 
-  let x, y = origin in 
-  let ox, oy = off in 
-  (ox +. x, oy +. y) 
-
-let move_layout (l:circuit_layout) (new_p:placement) : circuit_layout = 
-  let p, s, pl = l in 
-  let pl2 = List.map (offset new_p) pl in 
-  new_p, s, pl2 
 
 let (+~) x y = Float.add x (float_of_int y)
 let (+~~) x y = Float.add (float_of_int x) y

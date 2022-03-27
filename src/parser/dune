@@ -7,7 +7,7 @@
 (menhir
  (modules parser)
  ; (flags --explain --table)
- (flags -lg 1 -la 1 -lc 2)
+ (flags --explain -lg 1 -la 1 -lc 2)
 )
 
 (menhir

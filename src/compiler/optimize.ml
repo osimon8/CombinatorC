@@ -1,6 +1,6 @@
 open Ast.Bexp
-open Circuit
-open Combinator
+open Ast.Circuit
+open Ast.Combinator
 open Layout
 open Config
 open FirstPhase 
