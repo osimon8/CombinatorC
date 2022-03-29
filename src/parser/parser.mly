@@ -120,11 +120,8 @@ block:
   | LBRACE b=c_seq RBRACE   { b }
 
 command:
-  | CONCRETE CIRCUIT_BIND i=IDENT COLON v=expression ASSIGN b=bexp SEMI { CircuitBind (i, b, v, true) }
-  | CIRCUIT_BIND i=IDENT COLON v=expression ASSIGN b=bexp SEMI          { CircuitBind (i, b, v, false) }
-
-  | CONCRETE CIRCUIT_BIND i=IDENT COLON v=bexp ASSIGN b=bexp SEMI { CircuitBind (i, b, expression_of_bexp v, true) }
-  | CIRCUIT_BIND i=IDENT COLON v=bexp ASSIGN b=bexp SEMI          { CircuitBind (i, b, expression_of_bexp v, false) }
+  | CONCRETE CIRCUIT_BIND i=IDENT COLON v=arg ASSIGN b=bexp SEMI      { CircuitBind (i, b, v, true) }
+  | CIRCUIT_BIND i=IDENT COLON v=arg ASSIGN b=bexp SEMI               { CircuitBind (i, b, v, false) }
 
   | CIRCUIT_BIND i=IDENT ASSIGN c=circuit SEMI                        { Assign (i, TCircuit, Immediate (Circuit c)) }
   | TINT i=IDENT ASSIGN b=bexp SEMI                                   { Assign(i, TInt, expression_of_bexp b)  }
@@ -159,8 +156,8 @@ expression:
   // | LPAREN e=expression RPAREN     { e }
 
 for_loop: 
-  | op=FOR i=IDENT ASSIGN l=LIT TO u=LIT b=block         { For (op, i, l, u, false, b) }
-  | op=FOR i=IDENT ASSIGN l=LIT DOWNTO u=LIT b=block     { For (op, i, l, u, true, b) }
+  | op=FOR i=IDENT ASSIGN l=arg TO u=arg b=block         { For (op, i, l, u, false, b) }
+  | op=FOR i=IDENT ASSIGN l=arg DOWNTO u=arg b=block     { For (op, i, l, u, true, b) }
 
 %inline call: 
   | p=IDENT LPAREN args=separated_list(COMMA, arg) RPAREN { Call (p, args) }

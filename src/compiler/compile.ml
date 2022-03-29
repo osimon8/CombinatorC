@@ -224,9 +224,27 @@ let rec evaluate_expression (expression:expression) : expression =
       | Call (p, args) -> 
         let args = List.map expression_of_delayed args in 
         Circuit (Compiled (evaluate_call p args))
-      | Condition b -> Condition (bind_vars_of_bexp b)
+      | Condition b -> let b = bind_vars_of_bexp b in 
+                      if valid_condition b then Condition b else 
+                      begin match interpret_bexp b with 
+                      | Some i -> Int i 
+                      | None -> Circuit (Inline (b, "signal-check", None))
+                      end
       | Var v -> inter (bottom_out_var exp)
-      | For (concat, id, l, u, count_down, block) -> 
+      | For (concat, id, l_exp, u_exp, count_down, block) ->
+          let l_exp = evaluate_expression (expression_of_delayed l_exp) in  
+          let u_exp = evaluate_expression (expression_of_delayed u_exp) in  
+          let s exp = 
+            begin match exp with 
+            | Int i -> i 
+            | _ -> let ty, _ = interpret_type exp in 
+                  prerr_endline @@ Printf.sprintf 
+                  "Loop bound does not evaluate to \"int\", evaluates to \"%s\"" 
+                  (string_of_type ty) 
+                  ; exit 1
+            end in 
+          let l = s l_exp in 
+          let u = s u_exp in  
           let n_out = num_outputs block in 
           if n_out = 0 then (prerr_endline "For expression missing output!"; exit 1) 
           else (if n_out > 1 then (prerr_endline "For expression has multiple outputs, must have exactly 1"; exit 1));

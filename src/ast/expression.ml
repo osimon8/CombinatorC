@@ -36,6 +36,8 @@ let valid_condition bexp : bool =
                         | Lit _ -> true 
                         | _ -> signal_or_var b2  
                         end
+  | BOOL b 
+  | Not b -> signal_or_var b 
   | _ -> false
   end
 
@@ -51,7 +53,7 @@ type expression =
 | Signal of string 
 | Circuit of ctree
 | Pattern of (var_type * string) list
-| For of bool * string * int32 * int32 * bool * command list
+| For of bool * string * delayed_expression * delayed_expression * bool * command list
 and ctree = 
 | Union of ctree * ctree * loc
 | Concat of ctree * ctree * loc 
