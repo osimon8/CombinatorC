@@ -102,7 +102,9 @@ let offset (origin:placement) (off:placement) : placement =
 
 let move_layout (l:circuit_layout) (new_p:placement) : circuit_layout = 
   let p, s, pl = l in 
-  let pl2 = List.map (offset new_p) pl in 
+  let px, py = p in 
+  let neg_o = (Float.neg px, Float.neg py) in 
+  let pl2 = List.map (offset (offset new_p neg_o)) pl in 
   new_p, s, pl2 
 
 let rec is_concrete ctree : bool =

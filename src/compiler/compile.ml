@@ -309,6 +309,8 @@ and compile_ctree_to_circuit (ctree:ctree) : compiled_circuit =
         | None -> get_origin ()
       end in 
       let x c1 c2 rev = 
+        let delta = 2 in 
+
         let c2, c2_layout = c2 in 
         let p2, s2, pl2 = c2_layout in 
         let o2 = offset o p2 in 
@@ -316,7 +318,7 @@ and compile_ctree_to_circuit (ctree:ctree) : compiled_circuit =
 
         let l1 = layout c1 in
         let p1, s1, _ = l1 in 
-        let mv = if rev then (float_of_int (fst (s2) + 2), 0.) else (float_of_int (-(fst s1) - 2), 0.) in 
+        let mv = if rev then (float_of_int (fst (s2) + delta), 0.) else (float_of_int (-(fst s1) - delta), 0.) in 
         let o1 = offset (offset o p1) mv in 
         let p1, s1, pl1 = move_layout l1 o1 in
 
@@ -324,7 +326,7 @@ and compile_ctree_to_circuit (ctree:ctree) : compiled_circuit =
         let c = if rev then f c2 c1 else f c1 c2 in
         let o = if rev then p2 else p1 in 
 
-        Concrete (c, (o, (fst s1 + fst s2 + 2, snd s1 + snd s2), if rev then pl2 @ pl1 else pl1 @ pl2))
+        Concrete (c, (o, (fst s1 + fst s2 + delta, snd s1 + snd s2), if rev then pl2 @ pl1 else pl1 @ pl2))
       in 
 
 
@@ -340,14 +342,17 @@ and compile_ctree_to_circuit (ctree:ctree) : compiled_circuit =
       | Concrete c1, Concrete c2 -> 
         let c1, c1_layout = c1 in 
         let c2, c2_layout = c2 in 
-        let p1, _, _ = c1_layout in 
-        let p2, _, _ = c2_layout in 
+        let p1, _, pl1 = c1_layout in 
+        let p2, _, pl2 = c2_layout in 
+
         let o1 = offset o p1 in 
         let o2 = offset o p2 in 
         let p1, s1, pl1 = move_layout c1_layout o1 in 
         let p2, s2, pl2 = move_layout c2_layout o2 in
+
         let c = f c1 c2 in 
-        Concrete (c, (o, (max (fst s1) (fst s2), max (snd s1) (snd s2)), pl1 @ pl2))
+        let l = (o, (fst s1 + fst s2, max (snd s1) (snd s2)), pl1 @ pl2) in 
+        Concrete (c, l)
     end 
   in 
 
