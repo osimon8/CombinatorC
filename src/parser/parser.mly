@@ -122,8 +122,8 @@ block:
 command:
   | CONCRETE CIRCUIT_BIND i=IDENT COLON v=arg ASSIGN b=bexp SEMI      { CircuitBind (i, b, v, true) }
   | CIRCUIT_BIND i=IDENT COLON v=arg ASSIGN b=bexp SEMI               { CircuitBind (i, b, v, false) }
-
   | CIRCUIT_BIND i=IDENT ASSIGN c=circuit SEMI                        { Assign (i, TCircuit, Immediate (Circuit c)) }
+  
   | TINT i=IDENT ASSIGN b=bexp SEMI                                   { Assign(i, TInt, expression_of_bexp b)  }
   | TCONDITION i=IDENT ASSIGN b=bexp SEMI                             { Assign(i, TCondition, expression_of_bexp b)  }
   | TSIGNAL i=IDENT ASSIGN b=bexp SEMI                                { Assign(i, TSignal, expression_of_bexp b)  }
@@ -198,6 +198,3 @@ b_main:
   | b1=bexp DIV b2=bexp              { Div(b1, b2) }
   | b1=bexp MOD b2=bexp              { Mod(b1, b2) } 
   | b1=bexp EXP b2=bexp              { Exp(b1, b2) } 
-
-%inline b_signal:
-  | x=SIGNAL   { x } 
