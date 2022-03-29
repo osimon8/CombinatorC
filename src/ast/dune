@@ -1,5 +1,5 @@
 (library
  (name ast)
- (modules bexp command expression circuit combinator)
+ (modules bexp expression circuit combinator)
  (libraries core_kernel ocamlgraph utils)
 )

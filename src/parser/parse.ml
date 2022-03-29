@@ -1,4 +1,4 @@
-open Ast.Command
+open Ast.Expression
 open Compiler.Directive
 open Printf
 module L = MenhirLib.LexerUtil

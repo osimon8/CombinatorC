@@ -1,6 +1,5 @@
 %{
 open Ast.Bexp;;
-open Ast.Command;;
 open Ast.Expression;;
 open Compiler.Directive;;
 %}
@@ -57,7 +56,7 @@ open Compiler.Directive;;
 %token AT 
 %token COMMA
 
-%token <string> VAR
+%token <string> SIGNAL
 %token <int32> LIT
 
 %nonassoc ELSE
@@ -79,6 +78,13 @@ open Compiler.Directive;;
 
 %left UNION 
 %left CONCAT 
+
+%token<bool> FOR
+%token TO 
+%token DOWNTO
+
+%token LBRACE 
+%token RBRACE
 
 %start toplevel
 
@@ -106,9 +112,12 @@ dir_seq:
 directive:
   | d=DIRECTIVE   { [parse_directive (fst d) (snd d)] } 
 
+block: 
+  | LBRACE b=c_seq RBRACE   { b }
+
 command:
-  | CONCRETE CIRCUIT_BIND i=IDENT COLON v=b_var ASSIGN b=bexp SEMI { CircuitBind (i, b, v, true) }
-  | CIRCUIT_BIND i=IDENT COLON v=b_var ASSIGN b=bexp SEMI          { CircuitBind (i, b, v, false) }
+  | CONCRETE CIRCUIT_BIND i=IDENT COLON v=b_signal ASSIGN b=bexp SEMI { CircuitBind (i, b, v, true) }
+  | CIRCUIT_BIND i=IDENT COLON v=b_signal ASSIGN b=bexp SEMI          { CircuitBind (i, b, v, false) }
   | CIRCUIT_BIND i=IDENT ASSIGN c=circuit SEMI                     { Assign (i, TCircuit, Circuit c) }
   | o=output SEMI                                                  { o }
 
@@ -124,6 +133,10 @@ circuit:
   | c=expression                   { Expression (c, None) }
   | LPAREN c=circuit RPAREN          { c }
 
+for_loop: 
+  | op=FOR i=IDENT ASSIGN l=LIT TO u=LIT b=block         { For (op, i, l, u, false, b) }
+  | op=FOR i=IDENT ASSIGN l=LIT DOWNTO u=LIT b=block     { For (op, i, l, u, true, b) }
+
 arg: 
   | e=expression                 { e }
   | b=bexp                       { expression_of_bexp b }
@@ -132,6 +145,7 @@ expression:
   // | b=bexp    { expression_of_bexp b }
   | c=call    { c }
   | i=IDENT   { Ast.Expression.Var i }
+  | f=for_loop     { f }
   // | LPAREN e=expression RPAREN     { e }
 
 %inline call: 
@@ -146,7 +160,7 @@ b_main:
   | MINUS b=bexp                          { Neg(b) }
   | b=bop                                 { b }
   | l=LIT                                 { Lit l }
-  | x=VAR                                 { Var x }
+  | x=SIGNAL                                 { Var x }
   | LPAREN b=bexp RPAREN                  { b }
 
 %inline bop:
@@ -173,5 +187,5 @@ b_main:
   | b1=bexp MOD b2=bexp              { Mod(b1, b2) } 
   | b1=bexp EXP b2=bexp              { Exp(b1, b2) } 
 
-%inline b_var:
-  | x=VAR   { x } 
+%inline b_signal:
+  | x=SIGNAL   { x } 

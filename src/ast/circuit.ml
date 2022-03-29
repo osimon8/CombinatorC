@@ -39,6 +39,8 @@ type circuit_meta = id * (symbol list) * (symbol list) * (id list) * (id list)
 
 type circuit = combinator list * connection_graph * circuit_meta
 
+type composition = circuit -> circuit -> circuit 
+
 type placement = float * float
 type loc = placement option
 

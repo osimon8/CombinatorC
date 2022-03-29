@@ -1,6 +1,7 @@
 {
   open Lexing
   open Parser
+  open Compiler.Composition
 
   exception Lexer_error of string
 
@@ -20,7 +21,13 @@
   ("concrete", CONCRETE);
   ("circuit", CIRCUIT_BIND);
   ("at", AT);
+  ("for_concat", FOR true);
+  ("for_union", FOR false);
+  ("to", TO);
+  ("downto", DOWNTO);  
 
+  ("{", LBRACE);
+  ("}", RBRACE);
   ( ";", SEMI);
   ( ",", COMMA);
   ( ":", COLON);
@@ -92,12 +99,14 @@ rule token = parse
   | "/*"        { comments lexbuf }
   | comment     
   | '\n'        { MenhirLib.LexerUtil.newline lexbuf; token lexbuf }
-  | signal { VAR (lexeme lexbuf) }
+  | signal { SIGNAL (lexeme lexbuf) }
   | num    { LIT (Int32.of_string (lexeme lexbuf)) }
   | ident   { token_lookup lexbuf }
   | '#'     { let p = lexeme_start_p lexbuf in
               if p.pos_cnum - p.pos_bol = 0 then (direct_state := 0; directive lexbuf) 
               else raise (Lexer_error ("Syntax Error: Directives must start at the beginning of a line"))}
+  | '{'
+  | '}'
   | '+'        
   | '-'        
   | '*'        

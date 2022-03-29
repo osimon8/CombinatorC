@@ -45,7 +45,7 @@ let () =
 
   (* let circuits = List.map f assignment_list in  *)
 
-  let circuits = compile_commands_to_circuits  ~optimize_b ~optimize commands in 
+  let circuits = compile ~optimize_b ~optimize commands in 
   let entities = json_of_compiled_circuits circuits in 
 
   let js_string = to_json_string (json_output name entities) in

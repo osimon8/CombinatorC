@@ -191,3 +191,20 @@ let layout_circuits (circuits: circuit list) : circuit_layout list =
   let _, layouts = List.fold_left_map inter (0.,0.) circuits in 
   (* List.map (fun (_, _, p) -> p) layouts *)
   layouts
+
+
+  let bind_loc ctree (loc:placement) : ctree = 
+  let l = Some loc in 
+  begin match ctree with 
+  | Union(c1, c2, _) -> Union(c1, c2, l)
+  | Concat(c1, c2, _) -> Concat(c1, c2, l)
+  | Expression(e, _) -> Expression(e, l)
+  | Inline(b, s, _) -> Inline(b, s, l)
+  | Compiled c -> begin match c with 
+                  | Abstract c -> Compiled (Concrete (c, layout ~pos:loc c)) 
+                  | Concrete c ->  
+                    let c, l = c in 
+                    let l = move_layout l loc in 
+                    Compiled (Concrete (c, l))
+                  end 
+  end 

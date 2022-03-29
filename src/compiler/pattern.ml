@@ -59,7 +59,7 @@ let evaluate_pattern pattern args : compiled_circuit =
     let lamp = Lamp(id, cfg) in  
     let origin = get_origin () in 
     let layout = (origin, size_of_combinator lamp, [origin]) in 
-    let meta = (id, sigs, [], [id], []) in 
+    let meta = (id, sigs, sigs, [id], [id]) in 
     let g = CG.create() in 
     let c = ([lamp], g, meta) in
     Concrete (c, layout)

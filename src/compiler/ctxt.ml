@@ -26,6 +26,9 @@ module Ctxt = struct
     | None ->  add id bnd 
   end 
 
+  let remove (id:string) : unit = 
+    bindings := List.remove_assoc id !bindings
+
   let lookup (id:string) : var_type * expression =
     begin match List.assoc_opt id !bindings with 
     | Some s -> s

@@ -1,5 +1,5 @@
 type bexp =
-  | Var of string
+  | Signal of string
   | Lit of int32
   | Plus of bexp * bexp
   | Minus of bexp * bexp
@@ -37,7 +37,7 @@ let rec pow base i =
 let vars_in_bexp (b:bexp) : string list = 
   let rec intern b =  
     begin match b with 
-    | Var v -> [ v ]
+    | Signal v -> [ v ]
     | Lit _ -> []
     | Not b 
     | Neg b 
@@ -259,7 +259,7 @@ let optimize_bexp (b:bexp) : bexp =
     | BOOL b -> BOOL (o b)
     | Conditional (b1, b2, b3) -> Conditional (o b1, o b2, o b3)
     | Lit _
-    | Var _ -> b
+    | Signal _ -> b
     end in 
 
   (* do the optimization n times *)
@@ -285,7 +285,7 @@ let string_of_bexp (b : bexp) : string =
                         if first then s else "(" ^ s ^ ")" in
     begin
         match b with
-        | Var s -> s
+        | Signal s -> s
         | Lit l -> Int32.to_string l
         | Neg b -> "-" ^ sob b
         | Not b -> "!" ^ sob b 

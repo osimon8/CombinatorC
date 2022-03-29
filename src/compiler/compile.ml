@@ -5,7 +5,6 @@ open FirstPhase
 open Layout
 open Utils
 open Ast.Bexp
-open Ast.Command
 open Ast.Expression
 open Composition
 open Directive
@@ -199,6 +198,7 @@ let interpret_types (exps: expression list) : (var_type * expression) list =
     | Condition _ -> TCondition
     | Signal _ -> TSignal
     | Circuit _ 
+    | For _ 
     | Call _ -> TCircuit
     | Pattern _ -> TPattern
     | Var s -> let t, _ = Ctxt.lookup s in t 
@@ -206,7 +206,7 @@ let interpret_types (exps: expression list) : (var_type * expression) list =
   in 
   List.map inter exps
 
-let compile_ctree_to_circuit ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (lookup: string -> ctree) (ctree:ctree) : compiled_circuit = 
+let rec compile_ctree_to_circuit ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (ctree:ctree) : compiled_circuit = 
   let w o_sig bexp = let ast = 
                 if optimize_b then optimize_bexp bexp else bexp in 
               compile_bexp_to_circuit ~optimize o_sig ast in 
@@ -270,31 +270,44 @@ let compile_ctree_to_circuit ?optimize_b:(optimize_b=true) ?optimize:(optimize=t
   in 
 
     begin match ctree with 
+    | Compiled c -> c 
     | Inline (b, o_sig, loc) -> bind (w o_sig b) loc
     | Union (b1, b2, loc) -> comp circuit_union b1 b2 loc 
     | Concat (b1, b2, loc) -> comp circuit_concat b1 b2 loc
     (* TODO: use loc *)
-    | Expression (e, loc) -> 
-        begin match e with
+    | Expression (e, loc) -> evaluate_expression ~optimize_b ~optimize e loc 
+        (* begin match e with
         | Call (p, args) -> evaluate_call p (interpret_types args)
         | Circuit c -> r c 
         | Var v -> r (lookup v)
         | Condition b -> r (Inline (b, "check", loc))
         | Int i -> r (Inline (Lit i, "check", loc))
         | Signal s -> r (Inline (Var s, s, loc))
+        | For (comp, id, l, u, block) -> 
+          let n_out = num_outputs block in 
+          if n_out = 0 then (prerr_endline "For expression missing output!"; exit 1) 
+          else (if n_out > 1 then (prerr_endline "For expression has multiple outputs, must have exactly 1"; exit 1));
+          Ctxt.add id (TInt, Int l);
+          let c = evaluate_for comp block in 
+          evaluate_call "" []
+
         | Pattern _ -> prerr_endline @@ "Can't output pattern! How did you manage to do this?"; exit 1
-        end 
+        end  *)
     end
   
   in 
 
   let circuit = r ctree in 
   circuit 
-
-let evaluate_expression ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) exp loc : compiled_circuit =
+and evaluate_expression ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) exp loc : compiled_circuit =
   let rec inter exp = 
       begin match exp with 
-      | Call _ -> Expression (exp, loc)
+      | Call (p, args) -> 
+        let c = Compiled (evaluate_call p (interpret_types args)) in 
+        begin match loc with 
+        | Some loc -> bind_loc c loc
+        | None -> c
+        end
       | Signal s -> Inline (Var s, s, loc)
       | Int i -> Inline (Lit i, "check", loc)
       | Condition b -> Inline (b, "check", loc)
@@ -304,30 +317,50 @@ let evaluate_expression ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) 
                 | TPattern -> prerr_endline @@ "Can't bind pattern:\"" ^ v ^"\" to circuit"; exit 1
                 | _ -> inter e 
                 end 
+      | For (concat, id, l, u, count_down, block) -> 
+          let n_out = num_outputs block in 
+          if n_out = 0 then (prerr_endline "For expression missing output!"; exit 1) 
+          else (if n_out > 1 then (prerr_endline "For expression has multiple outputs, must have exactly 1"; exit 1));
+          Ctxt.add id (TInt, Int l);
+          let c = evaluate_for ~optimize_b ~optimize concat id u count_down block in 
+          Compiled c 
       | Pattern _ -> prerr_endline @@ "Can't bind pattern to circuit! How did you manage to do this?"; exit 1
       end in 
-  let lookup s = let _, exp = Ctxt.lookup s in  inter exp in
 
   let ctree = inter exp in 
   begin match loc with 
-  | Some loc -> compile_ctree_to_circuit ~optimize_b ~optimize lookup (bind_loc ctree loc)
-  | None -> compile_ctree_to_circuit ~optimize_b ~optimize lookup ctree 
+  | Some loc -> compile_ctree_to_circuit ~optimize_b ~optimize (bind_loc ctree loc)
+  | None -> compile_ctree_to_circuit ~optimize_b ~optimize ctree 
   end 
+and evaluate_for ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (concat: bool) (id:string) (bound:int32) (count_down:bool) (block:block) : compiled_circuit =
+  let _, i = Ctxt.lookup id in 
+  let i = begin match i with 
+  | Int i -> Int32.to_int i 
+  | _ -> failwith "Invalid for ctr type, shouldn't happen"
+  end in 
+  let bound = Int32.to_int bound in 
+  let finished i = (i < bound && count_down) || (i > bound && not count_down) in 
+  if finished i then 
+    (prerr_endline "For loop bounds result in 0 executions of loop, no output circuit"; exit 1);
 
-let compile_commands_to_circuits ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (commands: command list) : compiled_circuit list = 
-  register_builtins ();
+  let cmp () = Compiled (List.nth (compile_block_to_circuits ~optimize_b ~optimize block) 0) in 
+  let first = cmp () in 
+  let rec eval prev i = 
+    if finished i then prev else 
+    let c = cmp () in 
+    let c = if concat then Concat(prev, c, None) else Union(prev, c, None) in 
+    Ctxt.remove id; 
+    let i = if count_down then i - 1 else i + 1 in 
+    Ctxt.add id (TInt, Int (Int32.of_int i));
+    eval c i 
+  in
+  Ctxt.remove id; 
+  compile_ctree_to_circuit ~optimize_b ~optimize (eval first i)
+  
+and compile_block_to_circuits ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (commands: block) : compiled_circuit list = 
   let register ident b o_sig concrete = 
     Ctxt.add ident (TCircuit, Circuit (Inline (b, o_sig, if concrete then Some (get_origin ()) else None)))
   in
-    
-    (* begin match Ctxt.lookup ident with 
-                     | TCircuit, c -> begin match c with 
-                                      | Circuit c -> c 
-                                      | Call c
-                                      | _ -> failwith "impossible"
-                                      end
-                     | _ -> prerr_endline @@ "Variable with identifier \"" ^ ident ^ "\" is not a circuit, cannot output"; exit 1
-                    end in *)
 
   let compile command = 
     begin match command with 
@@ -340,3 +373,7 @@ let compile_commands_to_circuits ?optimize_b:(optimize_b=true) ?optimize:(optimi
 
   let circuit_opts = List.map compile commands in 
   deopt_list circuit_opts  
+
+let compile ?optimize_b:(optimize_b=true) ?optimize:(optimize=true) (commands: block) : compiled_circuit list = 
+  register_builtins ();
+  compile_block_to_circuits ~optimize_b ~optimize commands 

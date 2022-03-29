@@ -44,11 +44,30 @@ type expression =
 | Signal of string 
 | Circuit of ctree
 | Pattern of (var_type * string) list
+| For of bool * string * int32 * int32 * bool * command list
 and ctree = 
 | Union of ctree * ctree * loc
 | Concat of ctree * ctree * loc 
 | Expression of expression * loc
+| Compiled of compiled_circuit
 | Inline of bexp * string * loc
+and command = 
+| CircuitBind of string * bexp * string * bool
+| Assign of string * var_type * expression
+| Output of expression
+| OutputAt of expression * placement
+
+type block = command list 
+
+let num_outputs (block:block) : int =
+  let vali acc c = 
+    begin match c with 
+    | Output _
+    | OutputAt _ -> acc + 1
+    | _ -> acc 
+    end 
+  in
+  List.fold_left vali 0 block 
 
 let expression_of_bexp (bexp:bexp) : expression = 
   let lit_opt = interpret_bexp bexp in 
@@ -72,17 +91,6 @@ let move_layout (l:circuit_layout) (new_p:placement) : circuit_layout =
   let pl2 = List.map (offset new_p) pl in 
   new_p, s, pl2 
 
-
-
-let bind_loc ctree (loc:placement) : ctree = 
-  let l = Some loc in 
-  begin match ctree with 
-  | Union(c1, c2, _) -> Union(c1, c2, l)
-  | Concat(c1, c2, _) -> Concat(c1, c2, l)
-  | Expression(e, _) -> Expression(e, l)
-  | Inline(b, s, _) -> Inline(b, s, l)
-  end 
-
 let rec is_concrete ctree : bool =
   let c loc = match loc with | Some _ -> true | None -> false in 
   begin match ctree with 
@@ -90,4 +98,8 @@ let rec is_concrete ctree : bool =
   | Concat(c1, c2, loc) -> c loc || is_concrete c1 || is_concrete c2
   | Expression(_, loc) -> c loc
   | Inline(_, _, loc) -> c loc
+  | Compiled c -> begin match c with 
+                  | Concrete _ -> true 
+                  | Abstract _ -> false 
+                  end 
   end 
