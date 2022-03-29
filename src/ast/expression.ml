@@ -17,17 +17,24 @@ let string_of_type ty : string =
   | TPattern -> "pattern"
   end
 
+let signal_or_var bexp : bool = 
+  begin match bexp with 
+  | Signal _ 
+  | Var _ -> true 
+  | _ -> false 
+  end 
+
 let valid_condition bexp : bool = 
   begin match bexp with 
-  | Gt (Var s1, b2) 
-  | Gte (Var s1, b2) 
-  | Lt (Var s1, b2) 
-  | Lte (Var s1, b2) 
-  | Eq (Var s1, b2) 
-  | Neq (Var s1, b2) -> begin match b2 with 
-                        | Var _ 
+  | Gt (b1, b2) 
+  | Gte (b1, b2) 
+  | Lt (b1, b2) 
+  | Lte (b1, b2) 
+  | Eq (b1, b2) 
+  | Neq (b1, b2) -> signal_or_var b1 && 
+                      begin match b2 with 
                         | Lit _ -> true 
-                        | _ -> false 
+                        | _ -> signal_or_var b2  
                         end
   | _ -> false
   end
@@ -55,7 +62,7 @@ and command =
 | CircuitBind of string * bexp * string * bool
 | Assign of string * var_type * expression
 | Output of expression
-| OutputAt of expression * placement
+| OutputAt of expression * (bexp * bexp)
 
 type block = command list 
 
@@ -75,7 +82,7 @@ let expression_of_bexp (bexp:bexp) : expression =
   | Some l -> Int l 
   | None -> 
     begin match bexp with 
-    | Var s -> Signal s 
+    | Signal s -> Signal s 
     | _ -> if valid_condition bexp then Condition bexp else 
             Circuit (Inline (bexp, "check", None))
     end 

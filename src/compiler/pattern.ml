@@ -19,6 +19,7 @@ let register_builtins () =
 
 
 let lamp_config_of_condition (cnd:bexp) : lamp_config * symbol list = 
+  (* let cnd = bind_vars_of_bexp cnd in  *)
   let sigs = ref [] in  
   let bind s = 
     sigs := s :: !sigs 
@@ -26,19 +27,21 @@ let lamp_config_of_condition (cnd:bexp) : lamp_config * symbol list =
 
   let f b2 = 
     begin match b2 with 
-    | Var s -> bind s; Symbol s 
+    | Signal s -> bind s; Symbol s 
     | Lit l -> Const l 
     | _ -> failwith "invalid condition" 
   end in  
 
   let o1, op, o2 = 
   begin match cnd with 
-  | Gt (Var s, b2) -> bind s; Symbol s, Gt, f b2 
-  | Gte (Var s, b2) -> bind s; Symbol s, Gte, f b2 
-  | Lt (Var s, b2) -> bind s; Symbol s, Lt, f b2
-  | Lte (Var s, b2) -> bind s; Symbol s, Lte, f b2
-  | Eq (Var s, b2) -> bind s; Symbol s, Eq, f b2
-  | Neq (Var s, b2) -> bind s; Symbol s, Neq, f b2
+  | BOOL (Signal s) -> bind s; Symbol s, Neq, Const 0l
+  | Not (Signal s) -> bind s; Symbol s, Eq, Const 0l
+  | Gt (Signal s, b2) -> bind s; Symbol s, Gt, f b2 
+  | Gte (Signal s, b2) -> bind s; Symbol s, Gte, f b2 
+  | Lt (Signal s, b2) -> bind s; Symbol s, Lt, f b2
+  | Lte (Signal s, b2) -> bind s; Symbol s, Lte, f b2
+  | Eq (Signal s, b2) -> bind s; Symbol s, Eq, f b2
+  | Neq (Signal s, b2) -> bind s; Symbol s, Neq, f b2
   | _ -> failwith "invalid condition"
   end in 
   (o1, op, o2), !sigs

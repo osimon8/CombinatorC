@@ -75,6 +75,7 @@ open Compiler.Directive;;
 %right EXP  
 
 %nonassoc NOT 
+%nonassoc LPAREN
 
 %left UNION 
 %left CONCAT 
@@ -122,10 +123,13 @@ command:
   | o=output SEMI                                                  { o }
 
 output:
-  | OUTPUT c=circuit AT LPAREN v1=LIT COMMA v2=LIT RPAREN      { let loc = (Int32.to_float v1, Int32.to_float v2) in OutputAt ((Circuit c), loc) }
-  | OUTPUT c=circuit                                           { Output (Circuit c) }
-  | OUTPUT b=bexp AT LPAREN v1=LIT COMMA v2=LIT RPAREN      { let loc = (Int32.to_float v1, Int32.to_float v2) in OutputAt (expression_of_bexp b, loc) }
-  | OUTPUT b=bexp                                           { Output (expression_of_bexp b) }
+  | OUTPUT c=circuit AT t=tuple           { OutputAt (Circuit c, t) }
+  | OUTPUT c=circuit                      { Output (Circuit c) }
+  | OUTPUT b=bexp AT t=tuple              { OutputAt (expression_of_bexp b, t) }
+  | OUTPUT b=bexp                         { Output (expression_of_bexp b) }
+
+tuple:
+  LPAREN v1=bexp COMMA v2=bexp RPAREN   { (v1, v2) }
 
 circuit:
   | c1=circuit UNION c2=circuit    { Union (c1, c2, None) }
@@ -160,7 +164,8 @@ b_main:
   | MINUS b=bexp                          { Neg(b) }
   | b=bop                                 { b }
   | l=LIT                                 { Lit l }
-  | x=SIGNAL                                 { Var x }
+  | s=SIGNAL                              { Signal s }
+  | v=IDENT                               { Var v }
   | LPAREN b=bexp RPAREN                  { b }
 
 %inline bop:
@@ -178,7 +183,7 @@ b_main:
   | b1=bexp GT b2=bexp               { Gt(b1, b2) }
   | b1=bexp LTE b2=bexp              { Lte(b1, b2) } 
   | b1=bexp GTE b2=bexp              { Gte(b1, b2) }
-  | b1=bexp LSHIFT b2=bexp            { Lshift(b1, b2) }
+  | b1=bexp LSHIFT b2=bexp           { Lshift(b1, b2) }
   | b1=bexp RSHIFT b2=bexp           { Rshift(b1, b2) }
   | b1=bexp PLUS b2=bexp             { Plus(b1, b2) }
   | b1=bexp MINUS b2=bexp            { Minus(b1, b2) }

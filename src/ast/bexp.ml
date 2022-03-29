@@ -1,5 +1,6 @@
 type bexp =
   | Signal of string
+  | Var of string 
   | Lit of int32
   | Plus of bexp * bexp
   | Minus of bexp * bexp
@@ -34,10 +35,11 @@ let rec pow base i =
   | n -> Int32.mul n (pow base (Int32.sub i 1l))
   end
 
-let vars_in_bexp (b:bexp) : string list = 
+let signals_in_bexp (b:bexp) : string list = 
   let rec intern b =  
     begin match b with 
     | Signal v -> [ v ]
+    | Var _ 
     | Lit _ -> []
     | Not b 
     | Neg b 
@@ -168,7 +170,7 @@ let optimize_bexp (b:bexp) : bexp =
 
     (* Nots and BOOLS can be optimized away, prefer them *)
     | Eq (b, Lit 0l) -> Not (o b)
-    | Eq (b, Lit 1l) -> BOOL (o b)
+    (* | Eq (b, Lit 1l) -> BOOL (o b) *)
 
     (* LAND ands LORS take 2 combinators each, minimize their usage when possible *)
     | LAND (LAND (b1, b2), b3) -> LAND (Mul (o b1, o b2), o b3) 
@@ -259,6 +261,7 @@ let optimize_bexp (b:bexp) : bexp =
     | BOOL b -> BOOL (o b)
     | Conditional (b1, b2, b3) -> Conditional (o b1, o b2, o b3)
     | Lit _
+    | Var _ 
     | Signal _ -> b
     end in 
 
@@ -267,7 +270,7 @@ let optimize_bexp (b:bexp) : bexp =
   opti b passes
 
 let interpret_bexp bexp : int32 option = 
-  let vars = vars_in_bexp bexp in 
+  let vars = signals_in_bexp bexp in 
   if List.length vars <> 0 then None else 
   let rec inter b = 
     begin match b with 
@@ -285,6 +288,7 @@ let string_of_bexp (b : bexp) : string =
                         if first then s else "(" ^ s ^ ")" in
     begin
         match b with
+        | Var s 
         | Signal s -> s
         | Lit l -> Int32.to_string l
         | Neg b -> "-" ^ sob b

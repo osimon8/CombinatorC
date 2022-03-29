@@ -3,6 +3,7 @@ open Ast.Circuit
 open Ast.Combinator
 open Config
 open Utils
+open Ctxt 
 
 let lookup (combs:combinator list) (id:id)  : combinator =
   List.find (fun c -> id_of_combinator c = id) combs 
@@ -78,8 +79,9 @@ let detect_signal_collision (output_sig:symbol) (b:bexp) : bool =
     let i = intern under_conditional in  
     begin match b with 
     | Conditional (b1, b2, b3) -> it b1 || it b2 || it b3
+    | Var _ -> false
     | Lit l -> false 
-    | Var v -> v = output_sig && under_conditional
+    | Signal v -> v = output_sig && under_conditional
     | Plus (b1, b2)
     | Minus (b1, b2)
     | Div (b1, b2)
@@ -107,8 +109,50 @@ let detect_signal_collision (output_sig:symbol) (b:bexp) : bool =
     end in 
   intern false b 
 
+let rec bind_vars_of_bexp bexp : bexp =  
+  let rec i bexp = 
+  begin match bexp with 
+  | Var var -> 
+    let ty, v = Ctxt.lookup var in 
+    begin match v with 
+    | Int i -> Lit i 
+    | Signal s -> Signal s 
+    | Condition b -> b
+    | Var v -> bind_vars_of_bexp (Var v)
+    | _ -> prerr_endline (Printf.sprintf "Can't bind variable \"%s\" of type \"%s\" to expression" var (Ast.Expression.string_of_type ty)) ; exit 1 
+    end    
+  | Plus (b1, b2) -> Plus (i b1, i b2)
+  | Minus (b1, b2) -> Minus (i b1, i b2) 
+  | Div (b1, b2) -> Div (i b1, i b2)
+  | Mul (b1, b2) -> Mul (i b1, i b2)
+  | Exp (b1, b2) -> Exp (i b1, i b2)
+  | Mod (b1, b2) -> Mod (i b1, i b2)
+  | Lshift (b1, b2) -> Lshift (i b1, i b2)
+  | Rshift (b1, b2) -> Rshift (i b1, i b2)
+  | AND (b1, b2) -> AND (i b1, i b2)
+  | OR (b1, b2) -> OR (i b1, i b2)
+  | XOR (b1, b2) -> XOR (i b1, i b2)
+  | Gt (b1, b2) -> Gt (i b1, i b2)
+  | Lt (b1, b2) -> Lt (i b1, i b2)
+  | Gte (b1, b2) -> Gte (i b1, i b2)
+  | Lte (b1, b2) -> Lte (i b1, i b2)
+  | Eq (b1, b2) -> Eq (i b1, i b2)
+  | Neq (b1, b2) -> Neq (i b1, i b2)
+  | LAND (b1, b2) -> LAND (i b1, i b2)
+  | LOR (b1, b2) -> LOR (i b1, i b2)
+  | NAND (b1, b2) -> NAND (i b1, i b2)
+  | NOR (b1, b2) -> NOR (i b1, i b2)
+  | Conditional (b1, b2, b3) -> Conditional (i b1, i b2, i b3)
+  | Not b -> Not (i b)
+  | BOOL b -> BOOL (i b)
+  | Neg b -> Neg (i b) 
+  | Signal _ 
+  | Lit _ -> bexp 
+  end 
+in optimize_bexp (i bexp) 
 let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit = 
-  let vars = vars_in_bexp b in 
+  let b = bind_vars_of_bexp b in
+  let vars = signals_in_bexp b in 
   let sigs = output_sig :: vars in
 
   let sig_ctr = create_sig_ctr sigs in
@@ -126,7 +170,7 @@ let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit =
 
   let get_o_sig b = 
     begin match b with 
-    | Var v -> v
+    | Signal v -> v
     | _ -> sig_ctr () 
   end in 
 
@@ -156,9 +200,9 @@ let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit =
       let c, i = 
         begin match b1, b2 with 
           | Lit l1, Lit l2 -> [ Arithmetic (id, (Const l1, aop, Const l2, Symbol o_sig)) ], [] 
-          | Lit l, Var v -> [ Arithmetic (id, (Const l, aop, Symbol v, Symbol o_sig)) ], [id] 
-          | Var v, Lit l -> [ Arithmetic (id, (Symbol v, aop, Const l, Symbol o_sig)) ], [id] 
-          | Var v1, Var v2 ->[ Arithmetic (id, (Symbol v1, aop, Symbol v2, Symbol o_sig)) ], [id] 
+          | Lit l, Signal v -> [ Arithmetic (id, (Const l, aop, Symbol v, Symbol o_sig)) ], [id] 
+          | Signal v, Lit l -> [ Arithmetic (id, (Symbol v, aop, Const l, Symbol o_sig)) ], [id] 
+          | Signal v1, Signal v2 ->[ Arithmetic (id, (Symbol v1, aop, Symbol v2, Symbol o_sig)) ], [id] 
           | _ -> let c1, iids1, o1, s1 = cb b1 in 
                   let c2, iids2, o2, s2 = cb b2 in 
                   let iids = bin_iid_map id iids1 iids2 in 
@@ -172,9 +216,9 @@ let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit =
       let c, i = 
         begin match b1, b2 with 
           | Lit l1, Lit l2 -> [ Decider (id, (Const l1, dop, Const l2, Symbol o_sig, One))], []
-          | Lit l, Var v -> [ Decider (id, (Const l, dop, Symbol v, Symbol o_sig, One))], [id]
-          | Var v, Lit l -> [ Decider (id, (Symbol v, dop, Const l, Symbol o_sig, One))], [id]
-          | Var v1, Var v2 -> [ Decider (id, (Symbol v1, dop, Symbol v2, Symbol o_sig, One))], [id] 
+          | Lit l, Signal v -> [ Decider (id, (Const l, dop, Symbol v, Symbol o_sig, One))], [id]
+          | Signal v, Lit l -> [ Decider (id, (Symbol v, dop, Const l, Symbol o_sig, One))], [id]
+          | Signal v1, Signal v2 -> [ Decider (id, (Symbol v1, dop, Symbol v2, Symbol o_sig, One))], [id] 
           | _ -> let c1, iids1, o1, s1 = cb b1 in 
                  let c2, iids2, o2, s2 = cb b2 in 
                  let iids = bin_iid_map id iids1 iids2 in 
@@ -223,8 +267,13 @@ let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit =
       c1 @ c2 @ c3 @ combs, Some (niids1 @ niids2), [Dout id1; Dout id2], o_sig
     in
 
+    let cnst l : combinator list * (id list) option * connection list * symbol = 
+      let id = get_entity_id () in 
+      [Constant (id, [(o_sig, l)])], Some [], [C id], o_sig (* lone lit is a constant *)
+    in 
+
     begin match b with 
-    | Var v -> 
+    | Signal v -> 
       if v <> o_sig then 
         let id = get_entity_id () in 
         let combs = [Arithmetic (id, (Symbol v, Add, Const 0l, Symbol o_sig))] in 
@@ -232,9 +281,12 @@ let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit =
       else 
       [], None, [], o_sig (* IO wrapping will handle, do nothing.
                            Setting iids to None signals that the upper level needs to be an input   *)
-    | Lit l -> 
-              let id = get_entity_id () in 
-              [ Constant (id, [(o_sig, l)]) ], Some [], [C id], o_sig (* lone lit is a constant *)
+    | Lit l -> cnst l 
+    (* | Var v ->  let ty, l = Ctxt.lookup v in 
+              begin match l with 
+              | Int l -> cnst l 
+              | _ -> prerr_endline @@ "Variable used in expression is not of type \"int\", is instead type: \"" ^ Ast.Expression.string_of_type ty ^ "\""; exit 1
+              end  *)
     | Neg b -> 
               let c, iids, o, s = cb b in 
               let id = get_entity_id () in 
@@ -265,6 +317,7 @@ let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit =
     | LOR (b1, b2) -> logi b1 b2 OR Neq
     | NAND (b1, b2) -> logi b1 b2 Mul Eq
     | NOR (b1, b2) -> logi b1 b2 OR Eq
+    | Var _ -> failwith "impossible error, shouldn't happen"
     end 
   in 
   

@@ -6,12 +6,6 @@ open Encode
 open Compiler.Compile
 open Compiler.Config
 
-let optimize = true
-
-(* WARNING: If this is set to false, some expressions 
-  using comparison operations may not compile *)
-let optimize_b = true
-
 let usage_msg = "combc [--output-json] <file>"
 let input_file = ref None
 let output_json = ref false 
@@ -45,7 +39,7 @@ let () =
 
   (* let circuits = List.map f assignment_list in  *)
 
-  let circuits = compile ~optimize_b ~optimize commands in 
+  let circuits = compile commands in 
   let entities = json_of_compiled_circuits circuits in 
 
   let js_string = to_json_string (json_output name entities) in
