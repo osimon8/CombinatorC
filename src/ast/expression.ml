@@ -59,7 +59,7 @@ and ctree =
 | Compiled of compiled_circuit
 | Inline of bexp * string * loc
 and command = 
-| CircuitBind of string * bexp * string * bool
+| CircuitBind of string * bexp * delayed_expression * bool
 | Assign of string * var_type * delayed_expression
 | Output of delayed_expression
 | OutputAt of delayed_expression * (bexp * bexp)

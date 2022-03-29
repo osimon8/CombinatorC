@@ -87,13 +87,12 @@ let character = uppercase | lowercase
 let ichar = ['-' '_']
 let digit = ['0'-'9']
 let num = '-'?digit+
-let signal = uppercase
+let signal = ("signal" | "fluid" | "item")'-'(character | ichar | digit)+
 let single_case_word = (uppercase | ichar)(uppercase | ichar)+ | (lowercase | ichar)(lowercase | ichar)+
 let ident_symbol = character | ichar | digit
 let mixed_case_word = (character)(ident_symbol)+
 let ident = mixed_case_word | lowercase
 let whitespace = ['\t' ' ' '\r']
-let circuit_bind = "circuit"(whitespace+)
 let newline = '\n' | "\r\n" | eof
 let comment = "//"[^'\n']*newline
 
@@ -103,6 +102,7 @@ rule token = parse
   | "/*"        { comments lexbuf }
   | comment     
   | '\n'        { MenhirLib.LexerUtil.newline lexbuf; token lexbuf }
+  | uppercase { SIGNAL ("signal-" ^ lexeme lexbuf) }
   | signal { SIGNAL (lexeme lexbuf) }
   | num    { LIT (Int32.of_string (lexeme lexbuf)) }
   | ident   { token_lookup lexbuf }

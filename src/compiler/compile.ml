@@ -12,8 +12,19 @@ open Pattern
 open Ctxt
 open Config
 
-let json_of_symbol s = 
-  `Assoc [("type", `String "virtual"); ("name", `String ("signal-" ^ s))]
+let virt = Str.regexp "signal-(.+)" 
+let fluid = Str.regexp "fluid-(.+)" 
+let item = Str.regexp "item-(.+)" 
+
+let sig_regex = Str.regexp "\\([a-z]+\\)-\\(.+\\)"
+let json_of_symbol s =
+  let err () = (prerr_endline @@ Printf.sprintf "Invalid signal \"%s\", this error shouldn't happen" s; exit 1) in 
+  if not (Str.string_match sig_regex s 0) then err (); 
+  let ty = Str.matched_group 1 s in
+  let ty = if ty = "signal" then "virtual" else ty in   
+  let n = if ty = "virtual" then s else Str.matched_group 2 s in 
+
+  `Assoc [("type", `String ty); ("name", `String n)]
 
 let json_of_value v =
   `Intlit (Int32.to_string v)
@@ -342,8 +353,8 @@ and evaluate_expression_to_ctree exp loc : compiled_circuit =
   let rec inter exp = 
       begin match exp with 
       | Signal s -> Inline (Signal s, s, loc)
-      | Int i -> Inline (Lit i, "check", loc)
-      | Condition b -> Inline (b, "check", loc)
+      | Int i -> Inline (Lit i, "signal-check", loc)
+      | Condition b -> Inline (b, "signal-check", loc)
       | Circuit c -> c
       | Pattern _ -> prerr_endline "Can't evaluate pattern to circuit. Did you mean to provide arguments?"; exit 1
       | _ -> failwith "Expression not reduced! Impossible error"
@@ -390,7 +401,17 @@ and compile_block_to_circuits (commands: block) : compiled_circuit list =
 
   let compile command = 
     begin match command with 
-    | CircuitBind (ident, b, o_sig, concrete) -> register ident b o_sig concrete; None
+    | CircuitBind (ident, b, o_sig_exp, concrete) -> 
+      let ty, exp = interpret_type @@ evaluate_expression (expression_of_delayed o_sig_exp) in 
+      let o_sig = 
+        begin match exp with 
+        | Signal s -> s 
+        | _ -> prerr_endline @@ Printf.sprintf "Cannot bind expression of type \"%s\" to circuit output signal" 
+        (string_of_type ty); exit 1
+        end
+      in 
+
+      register ident b o_sig concrete; None
     | Assign (ident, ty, exp) -> 
       let exp = expression_of_delayed exp in  
       let i_ty, _ = interpret_type exp in

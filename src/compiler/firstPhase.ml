@@ -50,7 +50,7 @@ let create_sig_ctr (vars:string list) =
   let rec intern v = 
     begin match List.nth_opt sig_list v with 
     | None -> failwith "Out of signals!" 
-    | Some s -> if List.mem s vars then intern (ctr ()) else s
+    | Some s -> if List.mem s vars then intern (ctr ()) else "signal-" ^ s
     end
   in
   fun () -> 

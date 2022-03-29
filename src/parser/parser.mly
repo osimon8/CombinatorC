@@ -120,8 +120,12 @@ block:
   | LBRACE b=c_seq RBRACE   { b }
 
 command:
-  | CONCRETE CIRCUIT_BIND i=IDENT COLON v=b_signal ASSIGN b=bexp SEMI { CircuitBind (i, b, v, true) }
-  | CIRCUIT_BIND i=IDENT COLON v=b_signal ASSIGN b=bexp SEMI          { CircuitBind (i, b, v, false) }
+  | CONCRETE CIRCUIT_BIND i=IDENT COLON v=expression ASSIGN b=bexp SEMI { CircuitBind (i, b, v, true) }
+  | CIRCUIT_BIND i=IDENT COLON v=expression ASSIGN b=bexp SEMI          { CircuitBind (i, b, v, false) }
+
+  | CONCRETE CIRCUIT_BIND i=IDENT COLON v=bexp ASSIGN b=bexp SEMI { CircuitBind (i, b, expression_of_bexp v, true) }
+  | CIRCUIT_BIND i=IDENT COLON v=bexp ASSIGN b=bexp SEMI          { CircuitBind (i, b, expression_of_bexp v, false) }
+
   | CIRCUIT_BIND i=IDENT ASSIGN c=circuit SEMI                        { Assign (i, TCircuit, Immediate (Circuit c)) }
   | TINT i=IDENT ASSIGN b=bexp SEMI                                   { Assign(i, TInt, expression_of_bexp b)  }
   | TCONDITION i=IDENT ASSIGN b=bexp SEMI                             { Assign(i, TCondition, expression_of_bexp b)  }
