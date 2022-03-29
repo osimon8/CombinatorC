@@ -44,7 +44,7 @@ type compiled_circuit =
 | Concrete of concrete_circuit
 
 type expression = 
-| Call of string * expression list 
+| Call of string * delayed_expression list 
 | Int of int32
 | Condition of bexp  
 | Var of string 
@@ -55,14 +55,17 @@ type expression =
 and ctree = 
 | Union of ctree * ctree * loc
 | Concat of ctree * ctree * loc 
-| Expression of expression * loc
+| Expression of delayed_expression * loc
 | Compiled of compiled_circuit
 | Inline of bexp * string * loc
 and command = 
 | CircuitBind of string * bexp * string * bool
-| Assign of string * var_type * expression
-| Output of expression
-| OutputAt of expression * (bexp * bexp)
+| Assign of string * var_type * delayed_expression
+| Output of delayed_expression
+| OutputAt of delayed_expression * (bexp * bexp)
+and delayed_expression = 
+  | Delayed of bexp 
+  | Immediate of expression
 
 type block = command list 
 
@@ -76,15 +79,17 @@ let num_outputs (block:block) : int =
   in
   List.fold_left vali 0 block 
 
-let expression_of_bexp (bexp:bexp) : expression = 
+
+
+let expression_of_bexp (bexp:bexp) : delayed_expression = 
   let lit_opt = interpret_bexp bexp in 
   begin match lit_opt with 
-  | Some l -> Int l 
+  | Some l -> Immediate (Int l) 
   | None -> 
     begin match bexp with 
-    | Signal s -> Signal s 
-    | _ -> if valid_condition bexp then Condition bexp else 
-            Circuit (Inline (bexp, "check", None))
+    | Signal s -> Immediate (Signal s) 
+    | _ -> if valid_condition bexp then Immediate (Condition bexp) else 
+            Delayed bexp
     end 
   end  
 

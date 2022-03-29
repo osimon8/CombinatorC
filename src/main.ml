@@ -41,6 +41,7 @@ let () =
 
   let circuits = compile commands in 
   let entities = json_of_compiled_circuits circuits in 
+  prerr_newline ();
 
   let js_string = to_json_string (json_output name entities) in
   if !output_json then 

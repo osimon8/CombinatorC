@@ -75,7 +75,6 @@ open Compiler.Directive;;
 %right EXP  
 
 %nonassoc NOT 
-%nonassoc LPAREN
 
 %left UNION 
 %left CONCAT 
@@ -87,13 +86,17 @@ open Compiler.Directive;;
 %token LBRACE 
 %token RBRACE
 
+%token TINT 
+%token TSIGNAL 
+%token TCONDITION
+
 %start toplevel
 
 %on_error_reduce program
 
 %type <directive list * command list> toplevel  
 %type <bexp> bexp
-%type <expression> expression
+%type <delayed_expression> expression
 %%
 
 toplevel:
@@ -119,12 +122,15 @@ block:
 command:
   | CONCRETE CIRCUIT_BIND i=IDENT COLON v=b_signal ASSIGN b=bexp SEMI { CircuitBind (i, b, v, true) }
   | CIRCUIT_BIND i=IDENT COLON v=b_signal ASSIGN b=bexp SEMI          { CircuitBind (i, b, v, false) }
-  | CIRCUIT_BIND i=IDENT ASSIGN c=circuit SEMI                     { Assign (i, TCircuit, Circuit c) }
-  | o=output SEMI                                                  { o }
+  | CIRCUIT_BIND i=IDENT ASSIGN c=circuit SEMI                        { Assign (i, TCircuit, Immediate (Circuit c)) }
+  | TINT i=IDENT ASSIGN b=bexp SEMI                                   { Assign(i, TInt, expression_of_bexp b)  }
+  | TCONDITION i=IDENT ASSIGN b=bexp SEMI                             { Assign(i, TCondition, expression_of_bexp b)  }
+  | TSIGNAL i=IDENT ASSIGN b=bexp SEMI                                { Assign(i, TSignal, expression_of_bexp b)  }
+  | o=output SEMI                                                     { o }
 
 output:
-  | OUTPUT c=circuit AT t=tuple           { OutputAt (Circuit c, t) }
-  | OUTPUT c=circuit                      { Output (Circuit c) }
+  | OUTPUT c=circuit AT t=tuple           { OutputAt (Immediate (Circuit c), t) }
+  | OUTPUT c=circuit                      { Output (Immediate (Circuit c)) }
   | OUTPUT b=bexp AT t=tuple              { OutputAt (expression_of_bexp b, t) }
   | OUTPUT b=bexp                         { Output (expression_of_bexp b) }
 
@@ -135,11 +141,7 @@ circuit:
   | c1=circuit UNION c2=circuit    { Union (c1, c2, None) }
   | c1=circuit CONCAT c2=circuit   { Concat (c1, c2, None) }
   | c=expression                   { Expression (c, None) }
-  | LPAREN c=circuit RPAREN          { c }
-
-for_loop: 
-  | op=FOR i=IDENT ASSIGN l=LIT TO u=LIT b=block         { For (op, i, l, u, false, b) }
-  | op=FOR i=IDENT ASSIGN l=LIT DOWNTO u=LIT b=block     { For (op, i, l, u, true, b) }
+  | LPAREN c=circuit RPAREN        { c }
 
 arg: 
   | e=expression                 { e }
@@ -147,10 +149,14 @@ arg:
 
 expression: 
   // | b=bexp    { expression_of_bexp b }
-  | c=call    { c }
-  | i=IDENT   { Ast.Expression.Var i }
-  | f=for_loop     { f }
+  | c=call     { Immediate c }
+  | i=IDENT    { Immediate (Ast.Expression.Var i) }
+  | f=for_loop { Immediate f }
   // | LPAREN e=expression RPAREN     { e }
+
+for_loop: 
+  | op=FOR i=IDENT ASSIGN l=LIT TO u=LIT b=block         { For (op, i, l, u, false, b) }
+  | op=FOR i=IDENT ASSIGN l=LIT DOWNTO u=LIT b=block     { For (op, i, l, u, true, b) }
 
 %inline call: 
   | p=IDENT LPAREN args=separated_list(COMMA, arg) RPAREN { Call (p, args) }

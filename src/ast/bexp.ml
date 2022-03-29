@@ -32,7 +32,7 @@ let rec pow base i =
   begin match i with
   | 0l -> 1l
   | 1l -> base
-  | n -> Int32.mul n (pow base (Int32.sub i 1l))
+  | n -> Int32.mul base (pow base (Int32.sub i 1l))
   end
 
 let signals_in_bexp (b:bexp) : string list = 
@@ -69,6 +69,39 @@ let signals_in_bexp (b:bexp) : string list =
     end in
   (Core_kernel.List.stable_dedup (intern b))
 
+let vars_in_bexp (b:bexp) : string list = 
+  let rec intern b =  
+    begin match b with 
+    | Var v -> [ v ]
+    | Signal _ 
+    | Lit _ -> []
+    | Not b 
+    | Neg b 
+    | BOOL b -> intern b
+    | Plus (b1, b2)
+    | Minus (b1, b2)
+    | Mul (b1, b2) 
+    | Mod (b1, b2) 
+    | Exp (b1, b2) 
+    | Lshift (b1, b2) 
+    | Rshift (b1, b2) 
+    | AND (b1, b2) 
+    | OR (b1, b2) 
+    | XOR (b1, b2) 
+    | Div (b1, b2)
+    | Gt (b1, b2)
+    | Lt (b1, b2)
+    | Gte (b1, b2)
+    | Lte (b1, b2)
+    | Eq (b1, b2)
+    | Neq (b1, b2)
+    | LAND (b1, b2)
+    | LOR (b1, b2)
+    | NAND (b1, b2)
+    | NOR (b1, b2) -> intern b1 @ intern b2
+    | Conditional(b1, b2, b3) ->  intern b1 @ intern b2 @ intern b3
+    end in
+  (Core_kernel.List.stable_dedup (intern b))
 
 let optimize_bexp (b:bexp) : bexp = 
   let passes = 10 in 
@@ -270,8 +303,10 @@ let optimize_bexp (b:bexp) : bexp =
   opti b passes
 
 let interpret_bexp bexp : int32 option = 
-  let vars = signals_in_bexp bexp in 
-  if List.length vars <> 0 then None else 
+  let sigs = signals_in_bexp bexp in 
+  let vars = vars_in_bexp bexp in 
+  if (List.length sigs <> 0) || (List.length vars <> 0) then None
+  else 
   let rec inter b = 
     begin match b with 
     | Lit l -> Some l 

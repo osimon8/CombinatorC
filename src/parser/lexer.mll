@@ -24,7 +24,10 @@
   ("for_concat", FOR true);
   ("for_union", FOR false);
   ("to", TO);
-  ("downto", DOWNTO);  
+  ("downto", DOWNTO);
+  ("int", TINT);
+  ("signal", TSIGNAL);  
+  ("condition", TCONDITION);
 
   ("{", LBRACE);
   ("}", RBRACE);
@@ -34,6 +37,7 @@
   ( "+", PLUS);
   ( "-", MINUS);
   ( "*", MUL);
+  ("**", EXP);
   ( "/", DIV);
   ( "%", MOD);
   ( "*", MUL);
@@ -108,14 +112,14 @@ rule token = parse
   | '{'
   | '}'
   | '+'        
-  | '-'        
+  | '-'   
+  | "**"        
   | '*'        
   | '/'        
   | '%'        
   | "<<"       
   | ">>"             
   | '^'        
-  | "**"    
   | "==="       
   | "!=="              
   | ">="       

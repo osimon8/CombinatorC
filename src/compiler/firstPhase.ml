@@ -109,7 +109,7 @@ let detect_signal_collision (output_sig:symbol) (b:bexp) : bool =
     end in 
   intern false b 
 
-let rec bind_vars_of_bexp bexp : bexp =  
+let bind_vars_of_bexp bexp : bexp =  
   let rec i bexp = 
   begin match bexp with 
   | Var var -> 
@@ -117,8 +117,8 @@ let rec bind_vars_of_bexp bexp : bexp =
     begin match v with 
     | Int i -> Lit i 
     | Signal s -> Signal s 
-    | Condition b -> b
-    | Var v -> bind_vars_of_bexp (Var v)
+    | Condition b -> i b
+    | Var v -> i (Var v)
     | _ -> prerr_endline (Printf.sprintf "Can't bind variable \"%s\" of type \"%s\" to expression" var (Ast.Expression.string_of_type ty)) ; exit 1 
     end    
   | Plus (b1, b2) -> Plus (i b1, i b2)
@@ -282,11 +282,6 @@ let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit =
       [], None, [], o_sig (* IO wrapping will handle, do nothing.
                            Setting iids to None signals that the upper level needs to be an input   *)
     | Lit l -> cnst l 
-    (* | Var v ->  let ty, l = Ctxt.lookup v in 
-              begin match l with 
-              | Int l -> cnst l 
-              | _ -> prerr_endline @@ "Variable used in expression is not of type \"int\", is instead type: \"" ^ Ast.Expression.string_of_type ty ^ "\""; exit 1
-              end  *)
     | Neg b -> 
               let c, iids, o, s = cb b in 
               let id = get_entity_id () in 

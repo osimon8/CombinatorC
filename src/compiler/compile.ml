@@ -173,8 +173,7 @@ let json_of_bexp (o_sig:symbol) (b: bexp) : json list =
   let circuit = compile_bexp_to_circuit o_sig b in 
   json_of_circuits [circuit]
 
-let interpret_types (exps: expression list) : (var_type * expression) list = 
-  let rec inter exp =
+let interpret_type exp : var_type * expression = 
     begin match exp with 
     | Int _ -> TInt 
     | Condition _ -> TCondition
@@ -185,8 +184,9 @@ let interpret_types (exps: expression list) : (var_type * expression) list =
     | Pattern _ -> TPattern
     | Var s -> let t, _ = Ctxt.lookup s in t 
     end, exp
-  in 
-  List.map inter exps
+
+let interpret_types (exps: expression list) : (var_type * expression) list = 
+  List.map interpret_type exps
 
 let rec bottom_out_var e : expression = 
   begin match e with
@@ -196,12 +196,25 @@ let rec bottom_out_var e : expression =
   end 
 
 
+let expression_of_delayed exp = 
+  begin match exp with 
+          | Immediate exp -> exp 
+          | Delayed bexp -> 
+            let bexp = bind_vars_of_bexp bexp in
+            begin match expression_of_bexp bexp with 
+            | Immediate exp -> exp 
+            | Delayed _ -> Circuit (Inline (bexp, "check", None))
+            end  
+        end
+
 let rec evaluate_expression (expression:expression) : expression = 
   let rec inter exp = 
       begin match exp with 
-      | Call (p, args) -> Circuit (Compiled (evaluate_call p args))
+      | Call (p, args) -> 
+        let args = List.map expression_of_delayed args in 
+        Circuit (Compiled (evaluate_call p args))
       | Condition b -> Condition (bind_vars_of_bexp b)
-      | Var v -> bottom_out_var exp 
+      | Var v -> inter (bottom_out_var exp)
       | For (concat, id, l, u, count_down, block) -> 
           let n_out = num_outputs block in 
           if n_out = 0 then (prerr_endline "For expression missing output!"; exit 1) 
@@ -218,15 +231,15 @@ let rec evaluate_expression (expression:expression) : expression =
 
 and evaluate_call (pattern:string) (args: expression list) : compiled_circuit = 
   let p_args = Ctxt.lookup_pattern pattern in 
-  let args = interpret_types args in
+
+  let args = List.map (fun a -> 
+    let a = evaluate_expression a in 
+    interpret_type a
+    ) args in 
+
   let lp = List.length p_args in 
   let l = List.length args in 
   if lp <> l then (prerr_endline @@ Printf.sprintf "Pattern \"%s\" expects %d arguments, got %d" pattern lp l; exit 1);
-  
-  let args = List.map (fun (ty, a) -> 
-    let a = evaluate_expression a in 
-    ty, a
-    ) args in 
 
   let zipped = List.combine p_args args in 
   let old_bindings = Ctxt.get () in 
@@ -248,19 +261,14 @@ and compile_ctree_to_circuit (ctree:ctree) : compiled_circuit =
       let e = bottom_out_var (Var i) in 
       begin match e with 
       | Signal _ 
+      | Condition _
       | Int _ -> Abstract (compile_bexp_to_circuit o_sig ast)
       | Circuit c -> compile_ctree_to_circuit c 
-      | _ -> failwith "can't BIND!" 
+      | _ -> prerr_endline "Cannot bind variable to circuit. This error should never occur"; exit 1
       end
     | _ -> Abstract (compile_bexp_to_circuit o_sig ast)
     end
     in 
-
-  (* let bind circuit loc =
-    begin match loc with 
-    | Some pos -> Concrete (circuit, layout ~pos circuit)
-    | None -> Abstract circuit
-  end in *)
 
   let rec r ctree = 
     let comp f c1 c2 loc = 
@@ -323,7 +331,7 @@ and compile_ctree_to_circuit (ctree:ctree) : compiled_circuit =
                                 end 
     | Union (b1, b2, loc) -> comp circuit_union b1 b2 loc 
     | Concat (b1, b2, loc) -> comp circuit_concat b1 b2 loc
-    | Expression (e, loc) -> evaluate_expression_to_ctree  e loc 
+    | Expression (e, loc) -> evaluate_expression_to_ctree (expression_of_delayed e) loc 
     end
   in 
 
@@ -379,12 +387,22 @@ and compile_block_to_circuits (commands: block) : compiled_circuit list =
   let register ident b o_sig concrete = 
     Ctxt.add ident (TCircuit, Circuit (Inline (b, o_sig, if concrete then Some (get_origin ()) else None)))
   in
+
   let compile command = 
     begin match command with 
     | CircuitBind (ident, b, o_sig, concrete) -> register ident b o_sig concrete; None
-    | Assign (ident, ty, exp) -> Ctxt.add_no_dup ident (ty,exp); None
-    | Output e -> Some (evaluate_expression_to_ctree e None)
+    | Assign (ident, ty, exp) -> 
+      let exp = expression_of_delayed exp in  
+      let i_ty, _ = interpret_type exp in
+      if i_ty <> ty then 
+        (prerr_endline @@ Printf.sprintf "Cannot assign expression of type \"%s\" to variable of type \"%s\"" 
+        (string_of_type i_ty) (string_of_type ty)
+      ; exit 1);
+      Ctxt.add_no_dup ident (ty,exp); None
+    | Output e -> let e = expression_of_delayed e in
+                  Some (evaluate_expression_to_ctree e None)
     | OutputAt (e, (e1, e2)) -> 
+      let e = expression_of_delayed e in
       let e1 = bind_vars_of_bexp e1 in 
       let e2 = bind_vars_of_bexp e2 in 
       begin match e1, e2 with 

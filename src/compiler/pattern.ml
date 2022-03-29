@@ -19,7 +19,6 @@ let register_builtins () =
 
 
 let lamp_config_of_condition (cnd:bexp) : lamp_config * symbol list = 
-  (* let cnd = bind_vars_of_bexp cnd in  *)
   let sigs = ref [] in  
   let bind s = 
     sigs := s :: !sigs 
