@@ -1,5 +1,5 @@
 (library
  (name compiler)
   (modules optimize compile directive layout config firstPhase composition pattern ctxt) 
- (libraries core_kernel yojson ocamlgraph ast utils)
+ (libraries core yojson ocamlgraph ast utils)
 )

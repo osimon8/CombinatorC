@@ -1,7 +1,7 @@
 (lang dune 3.0)
 (using menhir 2.1)
 (name combc)
-(version 0.2.4)
+(version 0.2.5)
 (license "GPL-3.0")
 (authors "Owen Simon <osimon922@gmail.com>")
 (maintainers "Owen Simon <osimon922@gmail.com>")
@@ -10,5 +10,5 @@
 (package 
  (name combc)
  (synopsis "C-style language that compiles to Factorio combinators")
- (depends "menhir" "core_kernel" "ocamlgraph" "yojson" "zlib" "base64" "memcpy")
+ (depends "menhir" "core" "ocamlgraph" "yojson" "zlib" "base64" "memcpy")
 )
