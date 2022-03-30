@@ -62,7 +62,9 @@ type parse_result =
 let fast filename : parse_result =
   let text, lexbuf =
      try 
-      L.read filename 
+      let text = Core_kernel.In_channel.read_all filename in 
+      let lexbuf = L.init filename (Lexing.from_string text) in 
+      text, lexbuf
       with Sys_error s -> prerr_endline ("File error\n" ^ s); exit 1; 
     in 
   match P.toplevel Lexer.token lexbuf  with

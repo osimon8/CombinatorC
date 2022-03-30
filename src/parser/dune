@@ -1,6 +1,6 @@
 (library
  (name parse)
- (libraries ast compiler menhirLib))
+ (libraries core_kernel ast compiler menhirLib))
 
 (ocamllex lexer)
 
