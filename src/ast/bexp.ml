@@ -67,7 +67,7 @@ let signals_in_bexp (b:bexp) : string list =
     | NOR (b1, b2) -> intern b1 @ intern b2
     | Conditional(b1, b2, b3) ->  intern b1 @ intern b2 @ intern b3
     end in
-  (Core.List.stable_dedup (intern b))
+  (Core_kernel.List.stable_dedup (intern b))
 
 let vars_in_bexp (b:bexp) : string list = 
   let rec intern b =  
@@ -101,7 +101,7 @@ let vars_in_bexp (b:bexp) : string list =
     | NOR (b1, b2) -> intern b1 @ intern b2
     | Conditional(b1, b2, b3) ->  intern b1 @ intern b2 @ intern b3
     end in
-  (Core.List.stable_dedup (intern b))
+  (Core_kernel.List.stable_dedup (intern b))
 
 let optimize_bexp (b:bexp) : bexp = 
   let passes = 10 in 

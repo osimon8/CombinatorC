@@ -35,7 +35,7 @@ let circuit_union (c1:circuit) (c2:circuit) : circuit =
 
   let new_g = CG_ops.union g1 g2 in 
 
-  let f = Core.List.stable_dedup in 
+  let f = Core_kernel.List.stable_dedup in 
 
   List.iter (fun s -> if List.mem s i_sigs2 then
         prerr_endline "WARNING: circuit on left side of union has output signal that matches an input signal of circuit on right side, this may cause unexpected behavior")

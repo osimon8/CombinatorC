@@ -79,7 +79,7 @@ let rec calculate_signals_on_wire (c:circuit) (color:wire_color) (conn:connectio
     end
   in 
   let s = CG_traverse.fold_component intern [] g conn in 
-  Core.List.stable_dedup s 
+  Core_kernel.List.stable_dedup s 
 
 let rec input_signal_isolation (ctr: unit -> int) (inp_id:id) (circuit: circuit) : circuit = 
   let combs, g, meta = circuit in  
