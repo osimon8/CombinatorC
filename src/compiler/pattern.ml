@@ -8,7 +8,7 @@ open FirstPhase
 let builtins : (string * pattern) list = [
   "counter", [(TInt, "max_value"); (TSignal, "o_sig")];
   "counter2", [(TInt, "max_value"); (TSignal, "i_sig"); (TSignal, "o_sig")];
-  "lamp", [(TCondition, "condition")];
+  "lamp", [(TCondition, "cnd")];
 ]
 
 let register_builtins () = 
@@ -50,7 +50,7 @@ let evaluate_pattern pattern args : compiled_circuit =
   begin match pattern with 
   | "lamp" ->
     let id = get_entity_id () in 
-    let _, cnd = Ctxt.lookup "condition" in 
+    let _, cnd = Ctxt.lookup "cnd" in 
     let cnd = 
       begin match cnd with
       | Condition cnd -> cnd 

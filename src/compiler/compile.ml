@@ -399,7 +399,12 @@ and evaluate_for (concat: bool) (id:string) (bound:int32) (count_down:bool) (blo
   if finished i then 
     (prerr_endline "For loop bounds result in 0 executions of loop, no output circuit"; exit 1);
 
-  let cmp () = Compiled (List.nth (compile_block_to_circuits block) 0) in 
+  let cmp () = 
+    let old = Ctxt.get () in 
+    let c = Compiled (List.nth (compile_block_to_circuits block) 0) in 
+    Ctxt.set old;
+    c 
+  in 
   let update_ctr i = 
     Ctxt.remove id; 
     let i = if count_down then i - 1 else i + 1 in 

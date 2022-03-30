@@ -45,19 +45,80 @@ Now, you should be able to run the compiler normally.
 
 ## Language 
 
-A CombinatorC program starts with optional compiler directives, and is followed by an optional list of circuit bindings that are terminated by semicolons. A final output circuit is required, which can either be a circuit binding or an expression. This should not be terminated by a semicolon.  
+A CombinatorC program starts with optional compiler directives, and is followed by a list of commands. Commands are terminated by semicolons. 
 
 Programs will be compiled into a set of circuits, each including an input pole and output pole. Wire the intended circuit inputs to the input pole. 
 
-Comments can be written using `//`.
+Single line comments can be written using `//`, and multiline comments can be started with `/*` and closed with `*/`. 
+
+### Commands 
+
+CombinatorC currently supports 3 different commands. They are:
+
+- Cirucit binding 
+- Variable definition 
+- Output   
+
+A CombinatorC program can have as many outputs as you want, each distinct output will produce a separate circuit. 
+
+### Circuit Bindings
+
+A circuit binding has the syntax `circuit <name> : <output_signal> = <numeric_expression>`.  Here is an example circuit binding: 
+
+    circuit my_circuit : D = (A + B - C) / 45;
+
+This produces a circuit with the output signal `D`. You can use then use the bound variable name "my_circuit" to refer to the circuit in future commands, such as outputs. 
+
+Circuits can be marked as *concrete* by writing `concrete circuit` instead of `circuit` in a binding. This informs the compiler that you want the circuit to be considered separate from any other circuits it is composed with, and should not be merged in with those other circuits when the compiler lays down all the circuits on the Factorio grid. This isn't very useful unless you want the logical components of your circuit to be clearly separate for future purposes. I don't recommend using this, as it is a new feature and could be buggy. 
+
+### Variable Definition 
+
+Temporary variables for use in the code can be defined with the following syntax:
+
+    <type> <name> = <expression>
+
+The supported types are: 
+
+- int 
+- signal 
+- condition 
+- circuit 
+
+`int` types are numeric expressions, and `signal` types are signals.
+
+`condition` types are numeric expressions that can directly map to a decider combinator's config. This essentially means that it must be an expression of the form `<signal> <c_op> <expression>`, where `c_op` is either `==`, `!=`, `>`, `>=`, `<`, or `<=`, and `expression` is a numeric expression without any signals. 
+
+`circuit` types are circuits, which can be the name of a circuit that was previously bound, a pattern call, or a `for` expression. 
+
+Variables used in expressions must have already been defined earlier in the code before they can be used. Duplicate variable names are not allowed. 
+
+### Output 
+
+An output command has the following syntax: 
+
+    output <circuit>
+
+This informs the compiler to output the provided circuit. Multiple output statements are allowed, except in the body of a `for` loop. 
+
+To output a circuit at a specific location, use this syntax:
+
+    output <circuit> at (x,y)
+
+Where `x` and `y` are numeric expressions. The coordinate `(x,y)` represents the location on the Factorio grid the circuit will be placed at. Circuits will be placed relative to the origin `(0,0)` by default, so assigning a manual location will override that and instead place it at the provided location.
+
+Using the `at` syntax also automatically converts the circuit to a concrete circuit. This is only relevant for outputs within the body of a `for` loop. Within the body of a `for` loop, using the `at` syntax will place the circuits relative to the location of the overall circuit. This allows you to place circuits relative to each other, and then output the resulting circuit from the `for` loop somewhere else. 
+
+Note that increasing `y` means moving *down* on the Factorio grid, so if you want to place a circuit above the other circuits, you should use a negative `y` value.  
 
 ### Signals 
 
-Currently supported signals are the capital letters, for example `A`. Signals are used to set the output of a circuit binding, and also can be used in expressions. Support for more signals and arbitrary temporary variable naming is planned. 
+Signals in Factorio have type "virtual", "item", or "fluid". To express a virtual signal in CombinatorC, write `signal-<name>`, for example `signal-2`. To express an item or fluid signal, write `<type>-<name>`, for example `item-copper-ore` or `fluid-water`. 
 
-### Expressions
+As a shorthand, single capital letters are interpreted as the corresponding virtual signal. For example, `A` is interpreted as `signal-A`. 
 
-An expression is either: 
+### Numeric Expressions
+
+A numeric expression is either: 
 
 - A signal (e.g. `B`)
 - An integer literal (e.g. `10`, `0`, `-1234`)
@@ -65,11 +126,9 @@ An expression is either:
 - A mathematical expression composed using operators
 - A conditional expression
 
-Signals used in expressions are interpreted as input signals, and the resulting circuit will include a constant combinator wired to the input pole that initially sets every signal to `1`. 
+Signals used in numeric expressions are interpreted as input signals, and the resulting circuit will include a constant combinator wired to the input pole that initially sets every signal to `1`. 
 
-Programs that do not use circuit bindings and instead consist of a single expression will use the checkmark output signal. 
-
-#### Operators
+#### Numeric Operators
 
 There are two types of operators, numeric operators, decision operators, and boolean operators. 
 
@@ -127,30 +186,53 @@ You can also use the coalesce operator `??`, where `<exp1> ?? <exp2>` is shortha
 
 ### Note on Equality
 
- The logical equaliy and inequality operators (`===` and `!==`) should be used for comparing equality of booleans, not the numerical equality operators (`==` and `!=`). The need for these operators arises from the fact that booleans are just values `1` or `0`. So there is ambiguity in the intended meaning of an expression. For example, consider the following expression where the input wire carries signals `A=10` and `B=1`.
+ The logical equaliy and inequality operators (`===` and `!==`) should be used for comparing equality of booleans, not the numerical equality operators (`==` and `!=`). The need for these operators arises from the fact that booleans are just values `1` or `0`. So there is ambiguity in the intended meaning of an expression. Essentially, when you want the value you are handling to be treated as a boolean, use logical equality and inequality. 
 
-    if A === B then 
-        1
-    else 
-        -1 
+### Circuit Composition 
 
-  This statement would return 1, since `A` and `B` are both non-zero and are therefore logically equal. However, if the expression was instead
+A circuit can be *composed* with another circuit to produce a single new circuit. There are two types of compositions:
 
-    if A == B then 
-        1
-    else 
-        -1 
+- Concatenation   ( `@` )
+- Union   ( `\/` )
 
-This statement would return -1, since `A=10` and `B=1` and are therefore not numerically equal, even though they are logically equal. Essentially, when you want the value you are handling to be treated as a boolean, use logical equality and inequality. 
+Concatenation connects the outputs of the first circuit to the inputs of the next circuit, and union combines all of the inputs of both circuits, feeds them all to both circuits, and combines the outputs of both circuits. Here is an example composition using concatentation, assuming the circuits "a" and "b" have been previously defined:
 
-### Circuit Bindings
+    a @ b 
 
-A circuit binding has the syntax `circuit <output_signal> = <expression>`. If your program has only a single circuit, it should not be terminated by a semicolon. Here is an example circuit binding: 
+Concatenation has a higher precedence than union. And concrete circuits composed with regular circuits will produce a resulting circuit that is concrete. 
 
-    circuit D = (A + B - C) / 45
+There is a potential issue with union when the output signal of one circuit matches the input signal of the other circuit. The compiler will print a warning if this conflict is detected, as it may result in a circuit that doesn't function as intended. To avoid this, make sure the output and input signals are distinct when unioning circuits.  
 
-This produces a circuit with the output signal `D`. 
+### Pattern Calls 
 
+Circuits can be produced by calling a *pattern*. You can think of these as functions that return circuits. There are currently 3 built-in patterns:
+
+-`counter(int max_value, signal o_sig)`
+-`counter2(int max_value, signal i_sig, signal o_sig)`
+-`lamp(condition cnd)`
+
+`counter` starts at 0 and counts up by 1 every tick, and takes as an argument the maximum value it will count to before looping back to 0. There are 60 ticks in one second (unless you're playing Factorio on a TI-84 calculator or have a megabase). The argument `o_sig` is the signal that the counter will output. 
+
+`counter2` functions much the same as `counter`, except it also takes the argument `i_sig` which is the input signal that it will use to increment by. This is useful if you want a counter that counts by some value other than 1. 
+
+`lamp` outputs a lamp that has the enabled condition set to the provided argument `cnd`. It also outputs a concrete circuit, so you can layout lamps in some special way that will be preserved by the compiler. Any signals used in the condition are also output.
+
+User defined patterns are currently not supported, but I have plans to add them soon. 
+
+### For loops 
+
+Circuits can also be produced by a `for` loop expression. They have the following syntax: 
+
+    <for> <name>=<numeric_expression1> <to/downto> <numeric_expression2> {
+        <command>;
+        <command>;
+        ...
+        <output>;
+    }
+
+For loops will initialize an `int` variable with name "name" to the value `numeric_expression1`, and will increment it by 1 (if `to` is used) or decrement it by 1 if (`downto`) is used until the value of `numeric_expression2` is reached. At each iteration, the sequence of commands inside the braces will be executed (the bound variable "name" can be used in this context). The sequence of commands must have only a single output command. 
+
+There are two types of `for` loops, `for_concat` and `for_union`. The output circuit produced by the command sequence will be composed (using concatenation with `for_concat`, and union with `for_union`) with the next circuit output by iteration, yielding a single final output circuit.  
 
 ### Compiler Directives 
 
@@ -173,45 +255,58 @@ More details on the grammar can be found by looking at [parser.mly](src/parser/p
 
 ## Example Program 
 
-Here is an example program:
+Let's put it all together! Here's an example program:
 
-    #PRIMARY GREEN
-    
-    circuit D = 10 + ((A || B) && (C % 2)) + !5;
+    #PRIMARY GREEN   
 
-    // This is a comment
+    // bounce light back and forth at varying rates
 
-    circuit E = if D > 45 then F else G + 100;
+    int n = 10; 
+    int t = 100;
 
-    (65 + 12) >> 2
+    signal ctr-out = signal-0;
+    signal rate-out = R;
+    int r = 7 * t;
+
+    // increase the rate over time 
+    circuit div : rate-out = rate-out / t + 1;
+    circuit rate = counter(r - 1, rate-out) @ div;
+
+    // count up, to be used to determine which lamp is on
+    circuit add : ctr-out = ctr-out + 1;
+    circuit ctr = counter2(t * 2 - 1, rate-out, ctr-out) @ add;
+
+    // a line of n lamps 
+    circuit lamps = for_concat i=0 to (n - 1) {
+        condition cnd = ctr-out == i;
+        output lamp(cnd) at (i, 0);
+    };
+
+    int t_by_n = t / n;
+
+    // first half of counter, light up from left, second half light up from right
+    circuit cmpt : ctr-out = if ctr-out <= t then
+                                ctr-out / t_by_n 
+                            else
+                            -(ctr-out / t_by_n - 2 * (n - 1));
+
+    output rate @ ctr @ cmpt;
+    output lamps at (0, 8);
 
 
-This program will layout the circuits using green as the primary wire color, only using red wires when necessary. It will produce three distinct circuits:
-- The first circuit has output signal `D`, and takes inputs `A`, `B`, and `C`. 
-- The second circuit has output signal `E`, and takes inputs `D`, `F`, and `G`. **This is not the same signal `D` as the output of the first circuit, it is a separate input and not related to the first.**
-- The third circuit has output signal checkmark, and takes no inputs. The compiler will attempt to evaluate literal expressions like this immediately, so a constant combinator outputting the result value will be produced
+This program produces line of lamps in which a light will bounce back and forth between the endpoints at a varying rate. Let's see it in action: 
 
-Note that if you intend a circuit binding to be the last output, you must write out the whole binding expression, and not just the output signal. For example:
+<video src='https://youtu.be/XYLL0b5HhOo' width=180/>
 
-    circuit D = 10 + ((A || B) && (C % 2)) + !5;
-    circuit E = if D > 45 then F else G + 100 
-
-If you instead wrote: 
-
-    circuit D = 10 + ((A || B) && (C % 2)) + !5;
-    circuit E = if D > 45 then F else G + 100;
-    E
-
-This would be interpreted as three separate circuits, with the final circuit consisting of just a single expression that is equal to the input signal `E`. 
+The circuits seen in the video were generated entirely using the above program, with the exception of wiring the output pole from the combinators to the input pole of the lamps.
 
 ## Future Plans 
 
 I have a lot of potential ideas for how to extend the language and improve functionality, and would love to hear suggestions from people who design circuits in Factorio. What follows is the list of planned additions to the language and compiler:
 
-- Temporary variables 
-- Circuit composition operations, such as union (of the outputs) and concatenation 
+- User-defined patterns 
+- More built-in useful circuit constructs, such as filters, latches, and memory cells
 - Improved layout strategy using simulated annealing to optimize space used
 - Import of external circuits via a blueprint string
-- Built-in useful circuit constructs, such as timers, filters, latches, and memory cells
-- Operations with wildcard signals (I don't know what this will look like)
+- Proper support of operations with wildcard signals (I don't know what this will look like)
 - Much more! Stay tuned.
