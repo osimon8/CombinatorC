@@ -296,7 +296,7 @@ Let's put it all together! Here's an example program:
 
 This program produces line of lamps in which a light will bounce back and forth between the endpoints at a varying rate. Let's see it in action: 
 
-<video src='https://youtu.be/XYLL0b5HhOo' width=180/>
+https://user-images.githubusercontent.com/14896850/160725738-cd4cbfa9-7599-423e-9fa1-bfb1078e4e0f.mp4
 
 The circuits seen in the video were generated entirely using the above program, with the exception of wiring the output pole from the combinators to the input pole of the lamps.
 
