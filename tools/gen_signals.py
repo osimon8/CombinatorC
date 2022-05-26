@@ -1,10 +1,11 @@
 import urllib.request
 import re
 import json 
+import sys
 
 base_url = 'https://raw.githubusercontent.com/wube/factorio-data/master/base/prototypes/'
 
-files = [('signal', ''), ('item', 'item-'), ('fluid', 'fluid-')]
+files = [('signal', '', 3), ('item', 'item-', 0), ('fluid', 'fluid-', 0)] # 3 to exclude wildcards, they are first
 
 def delete_nested(s):
     acc = ""
@@ -38,7 +39,9 @@ def delete_nested(s):
         ctr -= decs
     return acc  
 
-for f, prefix in files:
+out_data = []
+
+for f, prefix, start_index in files:
     url = base_url + f + '.lua'
     with urllib.request.urlopen(url) as data: 
         raw = "".join([l.decode('utf-8') for l in data.readlines()])
@@ -60,5 +63,14 @@ for f, prefix in files:
         dump = []
         for entry in js:
             dump.append(prefix + entry['name'])
-        print("\n".join(dump[3:])) # exclude wildcards 
+        data = dump[start_index:]
+        data.sort() # puts lower priority virtual signals first, rest is irrelevant
+        out_data.extend(data)
+
+args = sys.argv
+if len(args) > 1 and args[1] == '--ocaml':
+    out = json.dumps(out_data).replace(",", ";\n")
+    print(out)
+else:    
+    print("\n".join(out_data))
 

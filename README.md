@@ -199,7 +199,7 @@ Concatenation connects the outputs of the first circuit to the inputs of the nex
 
     a @ b 
 
-Concatenation has a higher precedence than union. And concrete circuits composed with regular circuits will produce a resulting circuit that is concrete. 
+Concatenation has a higher precedence than union, and concrete circuits composed with regular circuits will produce a resulting circuit that is concrete. 
 
 There is a potential issue with union when the output signal of one circuit matches the input signal of the other circuit. The compiler will print a warning if this conflict is detected, as it may result in a circuit that doesn't function as intended. To avoid this, make sure the output and input signals are distinct when unioning circuits.  
 
@@ -207,9 +207,9 @@ There is a potential issue with union when the output signal of one circuit matc
 
 Circuits can be produced by calling a *pattern*. You can think of these as functions that return circuits. There are currently 3 built-in patterns:
 
--`counter(int max_value, signal o_sig)`
--`counter2(int max_value, signal i_sig, signal o_sig)`
--`lamp(condition cnd)`
+- `counter(int max_value, signal o_sig)`
+- `counter2(int max_value, signal i_sig, signal o_sig)`
+- `lamp(condition cnd)`
 
 `counter` starts at 0 and counts up by 1 every tick, and takes as an argument the maximum value it will count to before looping back to 0. There are 60 ticks in one second (unless you're playing Factorio on a TI-84 calculator or have a megabase). The argument `o_sig` is the signal that the counter will output. 
 
