@@ -103,6 +103,28 @@ let vars_in_bexp (b:bexp) : string list =
     end in
   (Core_kernel.List.stable_dedup (intern b))
 
+
+let rec is_logical (b:bexp) : bool = 
+  begin match b with 
+  | LAND (b1, b2)
+  | LOR (b1, b2)
+  | NAND (b1, b2)
+  | NOR (b1, b2)
+  | Eq (b1, b2)
+  | Neq (b1, b2)
+  | Gt (b1, b2)
+  | Gte (b1, b2)
+  | Lt (b1, b2)
+  | Lte (b1, b2) -> true 
+  | Lit 0l -> true
+  | Lit 1l -> true 
+  | BOOL b1
+  | Not b1 -> true 
+  | Mul (b1, b2) -> is_logical b1 && is_logical b2
+  | Div (b1, b2) -> is_logical b1 && is_logical b2
+  | _ -> false 
+end  
+
 let optimize_bexp (b:bexp) : bexp = 
   let passes = 10 in 
 
@@ -267,6 +289,12 @@ let optimize_bexp (b:bexp) : bexp =
       Better than a conditional, 2 combinators instead of 3 *)
     | Conditional (g, b2, Lit 0l) -> Mul (BOOL (o g), o b2)
     | Conditional (g, Lit 0l, b2) -> Mul (Not (o g), o b2)
+
+    | BOOL (Mul (b1, b2)) -> let t1 = o b1 in let t2 = o b2 in 
+                            let t3 = o (Mul (t1, t2)) in 
+                             if is_logical t1 && is_logical t2 then 
+                                t3
+                            else BOOL t3
 
     | Plus (b1, b2) -> Plus (o b1, o b2)
     | Minus (b1, b2) -> Minus (o b1, o b2)

@@ -145,6 +145,7 @@ let bind_vars_of_bexp bexp : bexp =
   end 
 in optimize_bexp (i bexp) 
 let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit = 
+  (* print_endline @@ string_of_bexp b; *)
   let b = bind_vars_of_bexp b in
   let vars = signals_in_bexp b in 
   let sigs = output_sig :: vars in

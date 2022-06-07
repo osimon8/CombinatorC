@@ -178,12 +178,18 @@ let wrap_io (circ:concrete_circuit) : concrete_circuit =
   let (~$) c = id_of_conn c in
   let (~$$) c = lookup combs ~$c in
 
-  let bind_conn cc oc i acc = 
+  let bind_conn_input cc oc i acc = 
     begin match lookup combs i with 
       | Constant (_, cfg) -> begin match cfg with 
                               | (s, v) :: [] -> if List.mem s i_sigs then acc else 
                                 let comb = ~$$oc in 
-                                if (uses_signal_in_input comb s && not (uses_wildcard comb)) then   
+                                (* let output_elim = 
+                                  begin match comb with
+                                  | Decider (_, (_, _, _, s, InpCount)) -> v = 1l && (match oc with Din _ -> true |_ -> false)   
+                                  | _ -> false 
+                                end in  *)
+                                let output_elim = false in 
+                                if (uses_signal_in_input comb s && not (uses_wildcard comb)) || output_elim then   
                                 let d, n, sigs, dels = acc in 
                                 let e = CG.succ_e g cc in            
                                 d @ e, n, sigs @ List.map (fun _ -> comb, (s, v)) e, ~$$cc :: dels  
@@ -192,13 +198,36 @@ let wrap_io (circ:concrete_circuit) : concrete_circuit =
                             end
       | _ -> failwith ("combinators inconsistent with connections - no CC with id " ^ string_of_int i)
       end in
+  (* let bind_conn_output c1 c2 id1 id2 = 
+    begin match lookup combs id1, lookup combs id2 with 
+      | Constant (_, cfg), Decider (_) -> 
+                              begin match cfg with 
+                              | (s, v) :: [] -> if List.mem s i_sigs then c1, c2 else 
+                                let comb = ~$$c2 in 
+                                if (uses_signal_in_input comb s && not (uses_wildcard comb)) then   
+                                let d, n, sigs, dels = acc in 
+                                let e = CG.succ_e g cc in            
+                                d @ e, n, sigs @ List.map (fun _ -> comb, (s, v)) e, ~$$cc :: dels  
+                                else acc 
+                              | _ -> c1, c2
+                            end
+      | _ -> failwith ("combinators inconsistent with connections - no CC/DC with id " ^ string_of_int i)
+      end in *)
 
   let delete_edges, new_edges, sigs, deleted_combs = CG.fold_edges (fun c1 c2 acc -> 
+    (* outputs *)
+    let c1, c2 = begin match c1, c2 with 
+    | C id1, Din id2
+    | Din id2, C id1 -> c1, c2
+    | _ -> c1, c2 
+    end in 
+
+    (* inputs *)
     begin match c1, c2 with 
     | C _, P _  
     | P _, C _ -> acc
-    | C i, _ -> bind_conn c1 c2 i acc 
-    | _, C i -> bind_conn c2 c1 i acc 
+    | C i, _ -> bind_conn_input c1 c2 i acc 
+    | _, C i -> bind_conn_input c2 c1 i acc 
     | _ -> acc
     end
     ) g ([], [], [], []) in
