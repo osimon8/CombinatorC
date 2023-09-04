@@ -89,6 +89,7 @@ open Compiler.Directive;;
 %token TINT 
 %token TSIGNAL 
 %token TCONDITION
+%token TSTAMP
 
 %start toplevel
 
@@ -126,6 +127,7 @@ command:
   
   | TINT i=IDENT ASSIGN b=bexp SEMI                                   { Assign(i, TInt, expression_of_bexp b)  }
   | TCONDITION i=IDENT ASSIGN b=bexp SEMI                             { Assign(i, TCondition, expression_of_bexp b)  }
+  | TSTAMP i=IDENT ASSIGN b=bexp SEMI                                 { Assign(i, TStamp, Immediate (Stamp b))  }
   | TSIGNAL i=IDENT ASSIGN b=bexp SEMI                                { Assign(i, TSignal, expression_of_bexp b)  }
   | o=output SEMI                                                     { o }
 

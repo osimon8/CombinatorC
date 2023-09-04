@@ -187,6 +187,7 @@ let json_of_bexp (o_sig:symbol) (b: bexp) : json list =
 let interpret_type exp : var_type * expression = 
     begin match exp with 
     | Int _ -> TInt 
+    | Stamp _ -> TStamp
     | Condition _ -> TCondition
     | Signal _ -> TSignal
     | Circuit _ 
@@ -207,16 +208,16 @@ let rec bottom_out_var e : expression =
   end 
 
 
-let expression_of_delayed exp = 
+let expression_of_delayed (exp: delayed_expression) : expression = 
   begin match exp with 
-          | Immediate exp -> exp 
-          | Delayed bexp -> 
-            let bexp = bind_vars_of_bexp bexp in
-            begin match expression_of_bexp bexp with 
-            | Immediate exp -> exp 
-            | Delayed _ -> Circuit (Inline (bexp, "check", None))
-            end  
-        end
+    | Immediate exp -> exp 
+    | Delayed bexp -> 
+      let bexp = bind_vars_of_bexp bexp in
+      begin match expression_of_bexp bexp with 
+      | Immediate exp -> exp 
+      | Delayed _ -> Circuit (Inline (bexp, "check", None))
+      end  
+  end
 
 let rec evaluate_expression (expression:expression) : expression = 
   let rec inter exp = 
@@ -253,6 +254,7 @@ let rec evaluate_expression (expression:expression) : expression =
           Circuit (Compiled c) 
       | Signal _ 
       | Int _ 
+      | Stamp _ 
       | Circuit _
       | Pattern _ -> exp
       end in 
@@ -291,6 +293,7 @@ and compile_ctree_to_circuit (ctree:ctree) : compiled_circuit =
       begin match e with 
       | Signal _ 
       | Condition _
+      | Stamp _
       | Int _ -> Abstract (compile_bexp_to_circuit o_sig ast)
       | Circuit c -> compile_ctree_to_circuit c 
       | _ -> prerr_endline "Cannot bind variable to circuit. This error should never occur"; exit 1
@@ -377,7 +380,8 @@ and evaluate_expression_to_ctree exp loc : compiled_circuit =
       begin match exp with 
       | Signal s -> Inline (Signal s, s, loc)
       | Int i -> Inline (Lit i, "signal-check", loc)
-      | Condition b -> Inline (b, "signal-check", loc)
+      | Condition b 
+      | Stamp b -> Inline (b, "signal-check", loc)
       | Circuit c -> c
       | Pattern _ -> prerr_endline "Can't evaluate pattern to circuit. Did you mean to provide arguments?"; exit 1
       | _ -> failwith "Expression not reduced! Impossible error"

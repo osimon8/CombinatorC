@@ -109,9 +109,10 @@ let bind_vars_of_bexp bexp : bexp =
   | Var var -> 
     let ty, v = Ctxt.lookup var in 
     begin match v with 
-    | Int i -> Lit i 
+    | Int x -> Lit x 
     | Signal s -> Signal s 
-    | Condition b -> i b
+    | Condition b 
+    | Stamp b -> i b 
     | Var v -> i (Var v)
     | _ -> prerr_endline (Printf.sprintf "Can't bind variable \"%s\" of type \"%s\" to expression" var (Ast.Expression.string_of_type ty)) ; exit 1 
     end    

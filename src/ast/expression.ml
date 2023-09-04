@@ -3,6 +3,7 @@ open Circuit
 
 type var_type = 
 | TInt
+| TStamp
 | TCondition
 | TSignal
 | TCircuit
@@ -11,6 +12,7 @@ type var_type =
 let string_of_type ty : string = 
   begin match ty with 
   | TInt -> "int"
+  | TStamp -> "expression"
   | TCondition -> "condition"
   | TSignal -> "signal"
   | TCircuit -> "circuit"
@@ -48,6 +50,7 @@ type compiled_circuit =
 type expression = 
 | Call of string * delayed_expression list 
 | Int of int32
+| Stamp of bexp
 | Condition of bexp  
 | Var of string 
 | Signal of string 

@@ -28,6 +28,7 @@
   ("int", TINT);
   ("signal", TSIGNAL);  
   ("condition", TCONDITION);
+  ("expression", TSTAMP);
 
   ("{", LBRACE);
   ("}", RBRACE);
