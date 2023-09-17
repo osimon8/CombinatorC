@@ -43,7 +43,7 @@ let lamp_config_of_condition (cnd:bexp) : lamp_config * symbol list =
   | Neq (Signal s, b2) -> bind s; Symbol s, Neq, f b2
   | _ -> failwith "invalid condition"
   end in 
-  (o1, op, o2), !sigs
+  {left_input=o1;op;right_input=o2}, !sigs
 
 
 let evaluate_pattern pattern args : compiled_circuit = 
@@ -61,7 +61,7 @@ let evaluate_pattern pattern args : compiled_circuit =
     let lamp = Lamp(id, cfg) in  
     let origin = get_origin () in 
     let layout = (origin, size_of_combinator lamp, [origin]) in 
-    let meta = (id, sigs, sigs, [id], [id]) in 
+    let meta: circuit_meta = {max_id=id; input_sigs=sigs; output_sigs=sigs; input_ids=[id]; output_ids=[id]} in 
     let g = CG.create() in 
     let c = ([lamp], g, meta) in
     Concrete (c, layout)
@@ -76,8 +76,8 @@ let evaluate_pattern pattern args : compiled_circuit =
     let id1 = get_entity_id () in 
     let id2 = get_entity_id () in 
     let cnst = Constant (id1, [(o_sig, 1l)]) in 
-    let ctr = Decider (id2, (Symbol o_sig, Lt, Const mv, Symbol o_sig, InpCount)) in 
-    let meta = (id2, [], [o_sig], [], [id2]) in 
+    let ctr = Decider (id2, d_cfg (Symbol o_sig, Lt, Const mv, Symbol o_sig, InpCount)) in 
+    let meta: circuit_meta = {max_id=id2; input_sigs=[]; output_sigs=[o_sig]; input_ids=[]; output_ids=[id2]} in 
     let g = CG.create() in 
     connect_primary g (C id1) (Din id2);
     connect_primary g (Dout id2) (Din id2);
@@ -93,19 +93,19 @@ let evaluate_pattern pattern args : compiled_circuit =
       | _ -> failwith "invalid args (shouldn't happen)"
     end in 
     let id1 = get_entity_id () in 
-    let ctr = Decider (id1, (Symbol i_sig, Lt, Const mv, Symbol i_sig, InpCount)) in 
+    let ctr = Decider (id1, d_cfg (Symbol i_sig, Lt, Const mv, Symbol i_sig, InpCount)) in 
     let g = CG.create() in 
     connect_primary g (Dout id1) (Din id1);
     let mid, combs, o_conns = 
       if i_sig <> o_sig then 
         let id2 = get_entity_id () in 
-        let map = Arithmetic (id2, (Symbol i_sig, Add, Const 0l, Symbol o_sig)) in 
+        let map = Arithmetic (id2, a_cfg (Symbol i_sig, Add, Const 0l, Symbol o_sig)) in 
         connect_primary g (Dout id1) (Ain id2);
         id2, [ctr; map], [id2]
       else
         id1, [ctr], [id1] 
     in
-    let meta = (mid, [i_sig], [o_sig], [id1], o_conns) in 
+    let meta: circuit_meta = {max_id=mid; input_sigs=[i_sig]; output_sigs=[o_sig]; input_ids=[id1]; output_ids=o_conns} in
     let c = (combs, g, meta) in
     Abstract c 
   | _ -> failwith "Unknown pattern, should never happen"

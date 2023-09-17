@@ -49,15 +49,20 @@ type aop =
 
 type op = Aop of aop | Dop of dop
 
-(* left input * operation * right input * output  *)
-type arithemtic_config = aop * arithemtic_op * aop * aop 
+type pole_type = 
+| Small 
+| Medium 
+| Big 
+| Substation
 
-(* left input * operation * right input * output  *)
-type decider_config = dop * decider_op * dop * dop * decider_output_type
-
+type decider_config = {left_input: dop; op: decider_op; right_input: dop; output: dop; output_type: decider_output_type} 
+type arithemtic_config = {left_input: aop; op: arithemtic_op; right_input: aop; output: aop} 
 type constant_config = signal
+type lamp_config = {left_input: dop; op: decider_op; right_input: dop} 
+type pole_config = pole_type
 
-type lamp_config = dop * decider_op * dop 
+let a_cfg (a, b, c, d) = {left_input=a; op=b; right_input=c; output=d} 
+let d_cfg (a, b, c, d, e) = {left_input=a; op=b; right_input=c; output=d; output_type=e}
 
 type cfg = 
 | A of arithemtic_config 
@@ -68,18 +73,13 @@ type cfg =
 type arithmetic_combinator = id * arithemtic_config
 type decider_combinator = id * decider_config
 
-type pole_type = 
-| Small 
-| Medium 
-| Big 
-| Substation
-
 type combinator = 
  | Arithmetic of arithmetic_combinator
  | Decider of decider_combinator
  | Constant of id * constant_config
  | Lamp of id * lamp_config
  | Pole of id * pole_type
+
 
 let size_of_combinator (comb:combinator) : size = 
  begin match comb with 
@@ -128,10 +128,10 @@ let uses_signal (comb:combinator) (s:symbol) : bool =
     end in 
 
   begin match comb with 
-  | Arithmetic (_, (op1, _, op2, _)) -> aop_uses op1 || aop_uses op2
-  | Decider (_, (op1, _, op2, op3, t)) -> dop_uses op1 true t || dop_uses op2 true t || dop_uses op3 false t
+  | Arithmetic (_, {left_input=op1; right_input=op2}) -> aop_uses op1 || aop_uses op2
+  | Decider (_, {left_input=op1; right_input=op2; output=op3; output_type=t}) -> dop_uses op1 true t || dop_uses op2 true t || dop_uses op3 false t
   | Constant (_, sigs) -> List.mem s (List.map fst sigs)  
-  | Lamp (_, (op1, _, op2)) -> dop_uses op1 true One || dop_uses op2 true One 
+  | Lamp (_, {left_input=op1; right_input=op2}) -> dop_uses op1 true One || dop_uses op2 true One 
   | Pole _ -> false 
   end 
 
@@ -153,10 +153,10 @@ let uses_signal_in_input (comb:combinator) (s:symbol) : bool =
     end in 
 
   begin match comb with 
-  | Arithmetic (id, (op1, _, op2, _)) -> aop_uses op1 || aop_uses op2
-  | Decider (id, (op1, _, op2, op3, t)) -> dop_uses op1 || dop_uses op2
+  | Arithmetic (_, {left_input=op1; right_input=op2}) -> aop_uses op1 || aop_uses op2
+  | Decider (_, {left_input=op1; right_input=op2; output=op3; output_type=t}) -> dop_uses op1 || dop_uses op2
   | Constant (_, sigs) -> List.mem s (List.map fst sigs)  
-  | Lamp (_, (op1, _, op2)) -> dop_uses op1 || dop_uses op2  
+  | Lamp (_, {left_input=op1; right_input=op2}) -> dop_uses op1 || dop_uses op2  
   | Pole _ -> false 
   end 
 
@@ -177,40 +177,41 @@ let uses_wildcard (comb:combinator) : bool =
     end in 
 
   begin match comb with 
-  | Arithmetic (id, (op1, _, op2, op3)) -> aop_uses op1 || aop_uses op2 || aop_uses op3
-  | Decider (id, (op1, _, op2, op3, t)) -> dop_uses op1 || dop_uses op2  || dop_uses op3 
+  | Arithmetic (_, {left_input=op1; right_input=op2; output=op3}) -> aop_uses op1 || aop_uses op2 || aop_uses op3
+  | Decider (id, {left_input=op1; right_input=op2; output=op3; output_type=t}) -> dop_uses op1 || dop_uses op2  || dop_uses op3 
   | Constant (_, sigs) -> false
-  | Lamp (_, (op1, _, op2)) -> dop_uses op1 || dop_uses op2  
+  | Lamp (_, {left_input=op1; right_input=op2}) -> dop_uses op1 || dop_uses op2  
   | Pole _ -> false 
   end 
 
+  (* Abstract these two similar functions to 1 function*)
 let replace_signal_A (comb:arithmetic_combinator) (s:symbol) (v:value) : arithmetic_combinator =
   let r2 (comb:arithmetic_combinator) s v : arithmetic_combinator =
-    let id, ((o1, op, o2, out)) = comb in 
-    begin match o2 with 
-    | Symbol sy -> if sy = s then (id, (o1, op, Const v, out)) else comb
+    let id, (cfg: arithemtic_config) = comb in 
+    begin match cfg.right_input with 
+    | Symbol sy -> if sy = s then (id, {cfg with right_input=(Const v)}) else comb
     | _ -> comb 
     end
   in
 
-   let id, ((o1, op, o2, out)) = comb in 
-   begin match o1 with 
-   | Symbol sy -> if sy = s then r2 (id, (Const v, op, o2, out)) s v else r2 comb s v
+   let id, cfg = comb in 
+   begin match cfg.left_input with 
+   | Symbol sy -> if sy = s then r2 (id, {cfg with left_input=(Const v)}) s v else r2 comb s v
    | _ -> r2 comb s v
 end
 
 let replace_signal_D (comb:decider_combinator) (s:symbol) (v:value) : decider_combinator =
   let r2 (comb:decider_combinator) s v : decider_combinator =
-    let id, ((o1, op, o2, out, t)) = comb in 
-    begin match o2 with 
-    | Symbol sy -> if sy = s then (id, (o1, op, Const v, out, t)) else comb
+    let id, cfg = comb in 
+    begin match cfg.right_input with 
+    | Symbol sy -> if sy = s then (id, {cfg with right_input=(Const v)}) else comb
     | _ -> comb 
     end
   in
 
-   let id, ((o1, op, o2, out, t)) = comb in 
-   begin match o1 with 
-   | Symbol sy -> if sy = s then r2 (id, (Const v, op, o2, out, t)) s v else r2 comb s v
+   let id, cfg = comb in 
+   begin match cfg.left_input with 
+   | Symbol sy -> if sy = s then r2 (id, {cfg with left_input=(Const v)}) s v else r2 comb s v
    | _ -> r2 comb s v
 end
 

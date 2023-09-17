@@ -35,7 +35,7 @@ module CG_traverse = Graph.Traverse.Bfs(CG)
 type connection_graph = CG.t
 
 (* max_id, input sigs, output sigs, input ids, output ids*)
-type circuit_meta = id * (symbol list) * (symbol list) * (id list) * (id list) 
+type circuit_meta = {max_id:id; input_sigs:symbol list; output_sigs: symbol list; input_ids: id list; output_ids: id list} 
 
 type circuit = combinator list * connection_graph * circuit_meta
 
@@ -65,8 +65,8 @@ let get_entity_id () : id =
 let reset_entity_ctr () =  entity_ctr := create_ctr ()
 
 let mid_of_circuit (circuit:circuit) : id = 
-  let _, _, (id, _, _, _, _) = circuit in 
-  id
+  let _, _, {max_id} = circuit in 
+  max_id
 
 (* input pole id, output pole id, circuit *)
 (* type wrapped_circuit = id * id * circuit  *)
