@@ -5,6 +5,7 @@ open Ast.Expression
 open Encode
 open Compiler.Compile
 open Compiler.Config
+open Compiler.Json
 
 let usage_msg = "combc [--output-json] <file>"
 let input_file = ref None

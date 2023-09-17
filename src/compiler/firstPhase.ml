@@ -195,15 +195,15 @@ let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit =
       let id = get_entity_id () in
       let c, i = 
         begin match b1, b2 with 
-          | Lit l1, Lit l2 -> [ Arithmetic (id, (Const l1, aop, Const l2, Symbol o_sig)) ], [] 
-          | Lit l, Signal v -> [ Arithmetic (id, (Const l, aop, Symbol v, Symbol o_sig)) ], [id] 
-          | Signal v, Lit l -> [ Arithmetic (id, (Symbol v, aop, Const l, Symbol o_sig)) ], [id] 
-          | Signal v1, Signal v2 ->[ Arithmetic (id, (Symbol v1, aop, Symbol v2, Symbol o_sig)) ], [id] 
+          | Lit l1, Lit l2 -> [ Arithmetic (id, a_cfg (Const l1, aop, Const l2, Symbol o_sig)) ], [] 
+          | Lit l, Signal v -> [ Arithmetic (id, a_cfg (Const l, aop, Symbol v, Symbol o_sig)) ], [id] 
+          | Signal v, Lit l -> [ Arithmetic (id, a_cfg (Symbol v, aop, Const l, Symbol o_sig)) ], [id] 
+          | Signal v1, Signal v2 ->[ Arithmetic (id, a_cfg (Symbol v1, aop, Symbol v2, Symbol o_sig)) ], [id] 
           | _ -> let c1, iids1, o1, s1 = cb b1 in 
                   let c2, iids2, o2, s2 = cb b2 in 
                   let iids = bin_iid_map id iids1 iids2 in 
                 connect (o1 @ o2) [Ain id];
-                c1 @ c2 @ [ Arithmetic (id, (Symbol s1, aop, Symbol s2, Symbol o_sig)) ], iids
+                c1 @ c2 @ [ Arithmetic (id, a_cfg (Symbol s1, aop, Symbol s2, Symbol o_sig)) ], iids
         end in 
     c, Some i, [Aout id], o_sig in
 
@@ -211,15 +211,15 @@ let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit =
       let id = get_entity_id () in
       let c, i = 
         begin match b1, b2 with 
-          | Lit l1, Lit l2 -> [ Decider (id, (Const l1, dop, Const l2, Symbol o_sig, One))], []
-          | Lit l, Signal v -> [ Decider (id, (Const l, dop, Symbol v, Symbol o_sig, One))], [id]
-          | Signal v, Lit l -> [ Decider (id, (Symbol v, dop, Const l, Symbol o_sig, One))], [id]
-          | Signal v1, Signal v2 -> [ Decider (id, (Symbol v1, dop, Symbol v2, Symbol o_sig, One))], [id] 
+          | Lit l1, Lit l2 -> [ Decider (id, d_cfg (Const l1, dop, Const l2, Symbol o_sig, One))], []
+          | Lit l, Signal v -> [ Decider (id, d_cfg (Const l, dop, Symbol v, Symbol o_sig, One))], [id]
+          | Signal v, Lit l -> [ Decider (id, d_cfg (Symbol v, dop, Const l, Symbol o_sig, One))], [id]
+          | Signal v1, Signal v2 -> [ Decider (id, d_cfg (Symbol v1, dop, Symbol v2, Symbol o_sig, One))], [id] 
           | _ -> let c1, iids1, o1, s1 = cb b1 in 
                  let c2, iids2, o2, s2 = cb b2 in 
                  let iids = bin_iid_map id iids1 iids2 in 
                 connect (o1 @ o2) [Din id];
-                c1 @ c2 @ [ Decider (id, (Symbol s1, dop, Symbol s2, Symbol o_sig, One)) ], iids
+                c1 @ c2 @ [ Decider (id, d_cfg (Symbol s1, dop, Symbol s2, Symbol o_sig, One)) ], iids
           end
       in c, Some i, [Dout id], o_sig  in
 
@@ -233,8 +233,8 @@ let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit =
 
       connect (o1 @ o2) [Ain id1];
       connect [Aout id1] [Din id2];
-      c1 @ c2 @ [ Arithmetic (id1, (Symbol s1, aop, Symbol s2, Symbol t_sig) );
-                  Decider (id2, (Symbol t_sig, dop, Const 0l, Symbol o_sig, One)) ]
+      c1 @ c2 @ [ Arithmetic (id1, a_cfg (Symbol s1, aop, Symbol s2, Symbol t_sig) );
+                  Decider (id2, d_cfg (Symbol t_sig, dop, Const 0l, Symbol o_sig, One)) ]
       , Some iids, [Dout id2], o_sig
     in
 
@@ -243,7 +243,7 @@ let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit =
       let id = get_entity_id () in 
       let iids = unary_iid_map id iids in 
       connect o [Din id];
-      c @ [ Decider (id, (Symbol s, dop, Const 0l, Symbol o_sig, dtype)) ], Some iids, [Dout id], o_sig
+      c @ [ Decider (id, d_cfg (Symbol s, dop, Const 0l, Symbol o_sig, dtype)) ], Some iids, [Dout id], o_sig
     in      
 
     let conditional b1 b2 b3 = 
@@ -258,8 +258,8 @@ let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit =
       let niids1 = bin_iid_map id1 iids1 iids2 in 
       let niids2 = bin_iid_map id2 iids1 iids3 in 
 
-      let combs = [Decider (id1, (Symbol guard, Neq, Const 0l, Symbol o_sig, InpCount)); 
-                   Decider (id2, (Symbol guard, Eq, Const 0l, Symbol o_sig, InpCount))] in 
+      let combs = [Decider (id1, d_cfg (Symbol guard, Neq, Const 0l, Symbol o_sig, InpCount)); 
+                   Decider (id2, d_cfg (Symbol guard, Eq, Const 0l, Symbol o_sig, InpCount))] in 
       c1 @ c2 @ c3 @ combs, Some (niids1 @ niids2), [Dout id1; Dout id2], o_sig
     in
 
@@ -272,7 +272,7 @@ let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit =
     | Signal v -> 
       if v <> o_sig then 
         let id = get_entity_id () in 
-        let combs = [Arithmetic (id, (Symbol v, Add, Const 0l, Symbol o_sig))] in 
+        let combs = [Arithmetic (id, a_cfg (Symbol v, Add, Const 0l, Symbol o_sig))] in 
         combs, Some [id], [Aout id], o_sig
       else 
       [], None, [], o_sig (* IO wrapping will handle, do nothing.
@@ -283,7 +283,7 @@ let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit =
               let id = get_entity_id () in 
               let iids = unary_iid_map id iids in 
               connect o [Ain id];
-              c @ [ Arithmetic (id, (Symbol s, Mul, Const (-1l), Symbol o_sig)) ], Some iids, [Aout id], o_sig
+              c @ [ Arithmetic (id, a_cfg (Symbol s, Mul, Const (-1l), Symbol o_sig)) ], Some iids, [Aout id], o_sig
     | Conditional (b1, b2, b3) -> conditional b1 b2 b3
     | Not b -> isolate b Eq One
     | BOOL b -> isolate b Neq One
@@ -321,12 +321,12 @@ let circuit_of_bexp (output_sig:symbol) (b: bexp) : circuit =
     if collision then 
       let id = get_entity_id () in 
       connect o_conns [Ain id];
-      List.rev (Arithmetic (id, (Symbol o_sig, Add, Const 0l, Symbol original_out)) :: combs), 
+      List.rev (Arithmetic (id, a_cfg (Symbol o_sig, Add, Const 0l, Symbol original_out)) :: combs), 
       [id]
   else 
     combs, List.map id_of_conn o_conns
   in
 
   let m_id = List.fold_left (fun acc c -> max acc (id_of_combinator c)) Int.min_int combs in
-
- (combs, g, (m_id, vars, [original_out], iids, oids))
+  let circuit_meta = {max_id=m_id;input_sigs=vars;output_sigs=[original_out];input_ids=iids;output_ids=oids} in
+ (combs, g, circuit_meta)

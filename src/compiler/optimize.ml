@@ -46,27 +46,27 @@ let rec calculate_signals_on_wire (c:circuit) (color:wire_color) (conn:connectio
     | Ain id -> 
       let comb =  ~!id in 
         begin match comb with 
-        | Arithmetic (_, (o1, _, o2, _)) -> acc @ map_aop conn o1 @ map_aop conn o2
+        | Arithmetic (_, {left_input=o1; right_input=o2}) -> acc @ map_aop conn o1 @ map_aop conn o2
         | _ -> failwith err 
         end  
     | Aout id -> 
         let comb =  ~!id in 
         begin match comb with 
-        | Arithmetic (_, (_, _, _, o)) -> acc @ map_aop conn o
+        | Arithmetic (_, {output}) -> acc @ map_aop conn output
         | _ -> failwith err 
         end  
     | Din id -> 
         let comb =  ~!id in 
         begin match comb with 
-        | Decider (_, (o1, _, o2, _, _)) -> acc @ map_dop conn o1 @ map_dop conn o2
+        | Decider (_, {left_input=o1; right_input=o2}) -> acc @ map_dop conn o1 @ map_dop conn o2
         | _ -> failwith err 
         end  
     | L id 
     | Dout id -> 
         let comb =  ~!id in 
         begin match comb with 
-        | Decider (_, (_, _, _, o, _)) -> acc @ map_dop conn o
-        | Lamp (_, (_, _, o)) -> acc @ map_dop conn o
+        | Decider (_, {output}) -> acc @ map_dop conn output
+        | Lamp (_, {right_input}) -> acc @ map_dop conn right_input
         | _ -> failwith err 
         end  
     | C id -> 
@@ -83,7 +83,7 @@ let rec calculate_signals_on_wire (c:circuit) (color:wire_color) (conn:connectio
 
 let rec input_signal_isolation (ctr: unit -> int) (inp_id:id) (circuit: circuit) : circuit = 
   let combs, g, meta = circuit in  
-  let mid, i_sigs, o_sigs, iids, oids = meta in
+  let {max_id=mid; input_ids=iids;} = meta in
   let internal acc id = 
     let conn = i_conn_of_id combs id in 
     let _ = get_primary () in (* ASSUMES ALL INPUT WIRES ARE PRIMARY COLOR *)
@@ -98,13 +98,13 @@ let rec input_signal_isolation (ctr: unit -> int) (inp_id:id) (circuit: circuit)
   in
   print_endline("---");
   let _ = List.fold_left internal mid iids in 
-  (combs, g, (mid, i_sigs, o_sigs, iids, oids))
+  circuit
 
 
 let wrap_io (circ:concrete_circuit) : concrete_circuit = 
   let circuit, (origin, size, placements) = circ in 
   let combs, g, meta = circuit in
-  let m_id, i_sigs, o_sigs, input, output = meta in 
+  let {max_id=m_id; input_sigs=i_sigs;output_sigs=o_sigs;input_ids=input;output_ids=output} = meta in 
 
   (* let get_entity_id = create_ctr ~i:(m_id + 1) () in  *)
 
@@ -160,7 +160,8 @@ let wrap_io (circ:concrete_circuit) : concrete_circuit =
   let new_combs = o_pole :: inp @ combs in
   let iids = List.map id_of_combinator inp in 
 
-  let new_c = (new_combs, g, (oid, i_sigs, o_sigs, iids, [oid])) in
+  let meta = {max_id=oid; input_sigs=i_sigs; output_sigs=o_sigs; input_ids=iids; output_ids=[oid]} in
+  let new_c = (new_combs, g, meta) in
   let new_placements = o_placement :: inp_placements @ placements in 
   new_c, ((ox -. 2., Float.min y_level oy), (sx + 4, sy), new_placements)
 
@@ -173,7 +174,7 @@ let wrap_io (circ:concrete_circuit) : concrete_circuit =
 *)
   let rec primitive_optimization (circuit:circuit) : circuit = 
   let combs, g, meta = circuit in 
-  let _, i_sigs, _, _, _ = meta in
+  let {input_sigs=i_sigs} = meta in
 
   let (~$) c = id_of_conn c in
   let (~$$) c = lookup combs ~$c in
@@ -251,9 +252,9 @@ let wrap_io (circ:concrete_circuit) : concrete_circuit =
 let remap_ids ?reset_ctr:(reset_ctr=true) (circuits:circuit list) : circuit list = 
   if reset_ctr then reset_entity_ctr ();
 
-  let remap circuit = 
+  let remap (circuit: circuit) = 
     let combs, g, meta = circuit in 
-    let _, i_sigs, o_sigs, input, output = meta in
+    let {input_sigs=i_sigs; output_sigs=o_sigs; input_ids=input; output_ids=output} = meta in
     let id_map = List.map (fun c -> let i = get_entity_id () in id_of_combinator c, i) combs in 
 
     let (~!) i = List.assoc i id_map in 
@@ -288,7 +289,8 @@ let remap_ids ?reset_ctr:(reset_ctr=true) (circuits:circuit list) : circuit list
     let new_input = List.map (~!) input in 
     let new_output = List.map (~!) output in 
 
-    (new_combs, new_g, (m_id, i_sigs, o_sigs, new_input, new_output))
+    let meta = {max_id=m_id; input_sigs=i_sigs; output_sigs=o_sigs; input_ids=new_input; output_ids=new_output} in 
+    (new_combs, new_g, meta)
   in
   List.map remap circuits 
 
