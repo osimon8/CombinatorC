@@ -1,0 +1,39 @@
+{
+  "name": "combinatorc",
+  "displayName": "CombinatorC",
+  "description": "Language support for CombinatorC: A programming language for expressing practical combinator circuits that compiles directly to Factorio blueprints",
+  "publisher": "OwenSimon",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/osimon8/CombinatorC"
+  },
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "combinatorc",
+        "aliases": [
+          "CombinatorC",
+          "combinatorc"
+        ],
+        "extensions": [
+          ".combc"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "combinatorc",
+        "scopeName": "source.combc",
+        "path": "./syntaxes/combinatorc.tmLanguage.json"
+      }
+    ]
+  }
+}

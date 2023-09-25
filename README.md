@@ -3,7 +3,7 @@ A C-style programming language that compiles into Factorio combinator blueprints
 
 I intend to create a language that is useful for designing complex circuits that are actually used for real Factorio gameplay, and not just as an academic curiosity. My original plan was to create a C-style language, but as development continues, it is likely that the language will change into something that more resembles something like Verilog in order to make it more practical. As such, I might the change the name, stay tuned! 
 
-The compiler is built in OCaml, and uses [Dune](https://dune.build/).
+The compiler is built in OCaml, and uses [Dune](https://dune.build/). I also created a [language extension for VS Code](https://marketplace.visualstudio.com/items?itemName=OwenSimon.combinatorc) that does syntax highlighting for CombinatorC program files with the `.combc` extension.
 
 **Executables for Ubuntu, Mac, and Windows can be found in the releases section of the repository.** 
 

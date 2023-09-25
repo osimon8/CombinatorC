@@ -10,6 +10,7 @@
 
 *.exe
 *.fpl
+*.combc
 *.json
 
 .vscode/
@@ -36,3 +37,6 @@ setup.log
 
 # Local OPAM switch
 _opam/
+
+!vscode_extension/*.json
+!vscode_extension/*.combc

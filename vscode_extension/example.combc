@@ -1,0 +1,42 @@
+#PRIMARY GREEN   
+
+/* 
+Example code to demonstrate extension
+Bounce light back and forth at varying rates
+*/
+
+int n = 10;
+int t = 100;
+
+signal ctr-out = signal-0;
+signal rate-out = R;
+int r = 7 * t;
+
+// increase the rate over time 
+circuit div : rate-out = rate-out / t + 1;
+circuit rate = counter(r - 1, rate-out) @ div;
+
+/* 
+test
+*/
+
+// count up, to be used to determine which lamp is on
+circuit add : ctr-out = ctr-out + 1;
+circuit ctr = counter2(t * 2 - 1, rate-out, ctr-out) @ add;
+
+// a line of n lamps 
+circuit lamps = for_concat i=0 to (n - 1) {
+    condition cnd = ctr-out == i;
+    output lamp(cnd) at (i, 0);
+};
+
+int t_by_n = t / n;
+
+// first half of counter, light up from left, second half light up from right
+circuit cmpt : ctr-out = if ctr-out <= t then
+                            ctr-out / t_by_n 
+                        else
+                        -(ctr-out / t_by_n - 2 * (n - 1));
+
+output rate @ ctr @ cmpt;
+output lamps at (0, 8);
