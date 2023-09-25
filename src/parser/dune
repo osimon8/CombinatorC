@@ -7,31 +7,22 @@
 (menhir
  (modules parser)
  ; (flags --explain --table)
- (flags --explain -lg 1 -la 1 -lc 2)
-)
+ (flags --explain -lg 1 -la 1 -lc 2))
 
 (menhir
-  (modules unitActionsParser)
-  (flags --table --external-tokens Parser)
-)
+ (modules unitActionsParser)
+ (flags --table --external-tokens Parser))
 
 (rule
-  (action
-    (with-stdout-to unitActionsParser.mly
-      (run menhir
-        %{dep:parser.mly}
-        --only-preprocess-u
-))))
+ (action
+  (with-stdout-to
+   unitActionsParser.mly
+   (run menhir %{dep:parser.mly} --only-preprocess-u))))
 
 (rule
  (with-stdout-to
   parser.messages.new
-  (run
-   menhir
-   %{dep:parser.mly}
-   --base
-   parser
-   --list-errors)))
+  (run menhir %{dep:parser.mly} --base parser --list-errors)))
 
 (rule
  (with-stdout-to

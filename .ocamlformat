@@ -1,5 +1,6 @@
-profile = ocamlformat
-version = 0.20.1
+profile = default
+version = 0.26.0
 
-exp-grouping = preserve
-
+exp-grouping=preserve
+margin=100
+break-cases=fit-or-vertical

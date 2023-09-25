@@ -1,4 +1,3 @@
 (library
  (name utils)
- (libraries yojson)
- )
+ (libraries yojson))

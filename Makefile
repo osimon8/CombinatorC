@@ -9,15 +9,21 @@ all: main.exe
 
 .FORCE:
 
+format:
+	dune fmt
+
 build:
+	dune fmt
 	dune build
 
 build-dev:
+	dune fmt
 	dune build
 	cp _build/default/src/main.exe combc 
 	chmod +w combc
 
 build-release:
+	dune fmt
 	dune build
 	cp _build/release-unix/src/main.exe combc 
 	chmod +w combc
