@@ -28,13 +28,18 @@ type bexp =
   | BOOL of bexp
   | Conditional of bexp * bexp * bexp
 
-let rec pow base i =
-  begin
-    match i with
-    | 0l -> 1l
-    | 1l -> base
-    | n -> Int32.mul base (pow base (Int32.sub i 1l))
-  end
+(* Factorio semantics: negative exponents yield 0, overflow wraps *)
+let pow base i =
+  let rec intern acc base i =
+    if i = 0l then acc
+    else
+      let acc = if Int32.logand i 1l = 1l then Int32.mul acc base else acc in
+      intern acc (Int32.mul base base) (Int32.shift_right_logical i 1)
+  in
+  if i < 0l then 0l else intern 1l base i
+
+(* Factorio only uses the low 5 bits of the shift amount *)
+let shift_amount l = Int32.to_int l land 31
 
 let signals_in_bexp (b : bexp) : string list =
   let rec intern b =
@@ -132,15 +137,15 @@ let optimize_bexp (b : bexp) : bexp =
       (* Literal interpretation *)
       | Plus (Lit l1, Lit l2) -> Lit (Int32.add l1 l2)
       | Minus (Lit l1, Lit l2) -> Lit (Int32.sub l1 l2)
-      | Div (Lit l1, Lit l2) -> Lit (Int32.div l1 l2)
+      | Div (Lit l1, Lit l2) -> Lit (if l2 = 0l then 0l else Int32.div l1 l2)
       | Mul (Lit l1, Lit l2) -> Lit (Int32.mul l1 l2)
       | Exp (Lit l1, Lit l2) -> Lit (pow l1 l2)
-      | Mod (Lit l1, Lit l2) -> Lit (Int32.rem l1 l2)
+      | Mod (Lit l1, Lit l2) -> Lit (if l2 = 0l then 0l else Int32.rem l1 l2)
       | OR (Lit l1, Lit l2) -> Lit (Int32.logor l1 l2)
       | AND (Lit l1, Lit l2) -> Lit (Int32.logand l1 l2)
       | XOR (Lit l1, Lit l2) -> Lit (Int32.logxor l1 l2)
-      | Lshift (Lit l1, Lit l2) -> Lit (Int32.shift_left l1 (Int32.to_int l2))
-      | Rshift (Lit l1, Lit l2) -> Lit (Int32.shift_right l1 (Int32.to_int l2))
+      | Lshift (Lit l1, Lit l2) -> Lit (Int32.shift_left l1 (shift_amount l2))
+      | Rshift (Lit l1, Lit l2) -> Lit (Int32.shift_right l1 (shift_amount l2))
       | Plus (Lit 0l, b)
       | Plus (b, Lit 0l)
       | Mul (Lit 1l, b)
@@ -159,7 +164,6 @@ let optimize_bexp (b : bexp) : bexp =
       (* Exponentiation by negative in Factorio returns 0 *)
       | Exp (b, Lit l) -> if l = 0l then Lit 1l else if l < 0l then Lit 0l else Exp (o b, Lit l)
       | Mul (Lit -1l, b) | Mul (b, Lit -1l) | Div (b, Lit -1l) -> Neg (o b)
-      | Mul (b1, Exp (Lit 2l, b2)) | Mul (Exp (Lit 2l, b2), b1) -> Lshift (o b1, o b2)
       (* Associate lits so they can be interpreted. TODO: add more of these *)
       | Mul (Mul (Lit l1, b1), Lit l2) -> Mul (o b1, o (Mul (Lit l1, Lit l2)))
       | Plus (Plus (Lit l1, b1), Lit l2) -> Plus (o b1, o (Plus (Lit l1, Lit l2)))
@@ -176,7 +180,7 @@ let optimize_bexp (b : bexp) : bexp =
       | Lt (Lit l1, Lit l2) -> if l1 < l2 then Lit 1l else Lit 0l
       | Gte (Lit l1, Lit l2) -> if l1 >= l2 then Lit 1l else Lit 0l
       | Lte (Lit l1, Lit l2) -> if l1 <= l2 then Lit 1l else Lit 0l
-      | Eq (Lit l1, Lit l2) -> if l1 == l2 then Lit 1l else Lit 0l
+      | Eq (Lit l1, Lit l2) -> if l1 = l2 then Lit 1l else Lit 0l
       | Neq (Lit l1, Lit l2) -> if l1 <> l2 then Lit 1l else Lit 0l
       | Gt (Lit l1, b) -> Lte (o b, Lit l1)
       | Lt (Lit l1, b) -> Gte (o b, Lit l1)
@@ -193,6 +197,7 @@ let optimize_bexp (b : bexp) : bexp =
       | Not (Eq (b1, b2)) -> Neq (o b1, o b2)
       | Not (Neq (b1, b2)) -> Eq (o b1, o b2)
       | Not (Lit l) -> if l = 0l then Lit 1l else Lit 0l
+      | BOOL (Lit l) -> if l = 0l then Lit 0l else Lit 1l
       | Not (Not (Not b)) -> Not (o b)
       | Not (Not b) -> BOOL (o b)
       (* Nots and BOOLS can be optimized away, prefer them *)
@@ -287,7 +292,10 @@ let interpret_bexp bexp : int32 option =
       begin
         match b with
         | Lit l -> Some l
-        | _ -> inter (optimize_bexp b)
+        | _ ->
+            let b' = optimize_bexp b in
+            (* Stop if optimization has reached a fixed point, otherwise this would loop forever *)
+            if b' = b then None else inter b'
       end
     in
     inter bexp

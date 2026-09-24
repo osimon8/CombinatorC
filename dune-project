@@ -10,5 +10,5 @@
 (package 
  (name combc)
  (synopsis "C-style language that compiles to Factorio combinators")
- (depends "menhir" ("core_kernel" (= "v0.14.2"))  "ocamlgraph" "yojson" "zlib" "base64" "memcpy")
+ (depends "menhir" ("core_kernel" (= "v0.14.2"))  "ocamlgraph" "yojson" "zlib" "base64")
 )

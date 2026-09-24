@@ -13,6 +13,8 @@ To build from source, install dependencies using:
 
 Then, run `dune build`. 
 
+To run the tests, use `dune test` (or `make test`). Unit tests for the optimizer live in `test/unit`, and end-to-end snapshot tests live in `test/programs`. The snapshot tests are [cram tests](https://dune.readthedocs.io/en/stable/tests.html#cram-tests) that compile small programs and compare the output against the expected result stored in the `.t` file. If you intentionally change the compiler's output, run `dune test --auto-promote` (or `make promote`) to update the expected output, and review the diff before committing.
+
 ## Usage 
 
 Simply supply the file name containing the CombinatorC program as a command line argument. The compiler will print a Factorio blueprint string to `stdout`.

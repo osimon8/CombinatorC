@@ -12,16 +12,12 @@ let json_output name entities =
 let to_json_string js = Yojson.Safe.pretty_to_string js
 
 let bigstring_of_string (src : string) : Zlib.bigstring =
-  let len = String.length src in
-  let dims = Array.of_list [ len ] in
-  let dst = Genarray.create char c_layout dims in
-  let src = Core_kernel.Bytes.of_string src in
-  Memcpy.(memcpy_from_bytes (bigarray Ctypes.genarray dims char)) ~src ~dst ~dst_off:0;
-  array1_of_genarray dst
+  let dst = Array1.create char c_layout (String.length src) in
+  String.iteri (fun i c -> Array1.unsafe_set dst i c) src;
+  dst
 
 let string_of_bigstring (src : Zlib.bigstring) (len : int) : string =
-  let dst : bytes = Bytes.init len (fun i -> Array1.unsafe_get src i) in
-  Core_kernel.Bytes.to_string dst
+  String.init len (fun i -> Array1.unsafe_get src i)
 
 let encode (name : string) entities =
   let json = to_json_string (json_output name entities) in

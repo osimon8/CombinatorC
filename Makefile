@@ -1,4 +1,4 @@
-.PHONY: all clean utop build run
+.PHONY: all clean utop build run test promote
 
 all: main.exe
 
@@ -27,6 +27,13 @@ build-release:
 	dune build
 	cp _build/release-unix/src/main.exe combc 
 	chmod +w combc
+
+test:
+	dune test
+
+# Accept changes to the expected output of snapshot tests
+promote:
+	dune test --auto-promote
 
 clean:
 	dune clean

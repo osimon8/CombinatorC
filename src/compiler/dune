@@ -12,4 +12,4 @@
   ctxt
   sig_list
   json)
- (libraries core_kernel yojson ocamlgraph ast utils))
+ (libraries core_kernel str yojson ocamlgraph ast utils))
